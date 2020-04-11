@@ -5,7 +5,6 @@ import pdb
 '''
 损失函数
 '''
-
 class Loss(object):
 
     '''

@@ -50,9 +50,6 @@ class Session(object):
         #反向传播梯度
         self.__model.backward(self.__loss.gradient)
 
-        #正则化算法
-        
-
         #更新模型参数
         self.__optimizer(self.__model)
 

@@ -24,7 +24,7 @@ from cutedl import losses, optimizers
 任务目标函数
 '''
 def target_func(x):
-    #加入(0, 0.25^2)正态分布噪声
+    #加入服从参数(0, 0.25^2)正态分布噪声
     y = (x - 2)**2 + 0.25 * np.random.randn(len(x))
     return y
 
@@ -105,53 +105,6 @@ def show_testds():
     plt.savefig("testds.png")
 
 show_testds()
-
-'''
-构建模型
-'''
-def build_model():
-    model = Model()
-
-    '''
-    线性模型
-    '''
-    '''model.add(nnlys.Dense(32, inshape=1))
-    model.add(nnlys.Dense(1))'''
-
-    '''
-    更复杂的线性模型
-    '''
-    '''model.add(nnlys.Dense(64, inshape=1))
-    model.add(nnlys.Dense(128, inshape=1))
-    model.add(nnlys.Dense(1))'''
-
-    '''
-    简单的非线性模型
-    '''
-    '''model.add(nnlys.Dense(32, inshape=1, activation='relu'))
-    model.add(nnlys.Dense(1))'''
-
-    '''
-    较复杂的非线性模型
-    '''
-    model.add(nnlys.Dense(256, inshape=1, activation='relu'))
-    #model.add(nnlys.Dense(256, activation='relu'))
-    model.add(nnlys.Dense(1))
-
-    '''
-    更复杂的非线性模型
-    '''
-    '''
-    model.add(nnlys.Dense(64, inshape=1, activation='relu'))
-    model.add(nnlys.Dense(64, activation='relu'))
-    model.add(nnlys.Dense(64, activation='relu'))
-    model.add(nnlys.Dense(1))'''
-
-    model.assemble()
-
-    #pdb.set_trace()
-
-    return model
 
 model_path = "./model/mlp_linear_regression"
 

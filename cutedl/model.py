@@ -63,7 +63,7 @@ class Layer(object):
         #层在模型中的id, 是层在模型中的索引
         self.__id = 0
         #层的名字
-        self.__name = '/%d/%s'%(self.__id, self.tag)
+        self.__name = '/%d-%s'%(self.__id, self.tag)
 
         #得到可选参数
         #print("Layer kargs:", kargs)
@@ -90,14 +90,6 @@ class Layer(object):
     @property
     def name(self):
         return self.__name
-
-    @property
-    def L1(self):
-        return self.__L1
-
-    @property
-    def L2(self):
-        return self.__L2
 
     '''
     初始参数
@@ -139,7 +131,7 @@ class Layer(object):
                 self.__inshape = inshape
 
         self.__id = pre_layer.layer_id + 1
-        self.__name = '/%d/%s'%(self.__id, self.tag)
+        self.__name = '/%d-%s'%(self.__id, self.tag)
 
         self.init_params()
 
@@ -197,6 +189,10 @@ class Model(object):
             raise Exception("index out of range %d"%len(self.__layers))
 
         return self.__layers[index]
+
+    @property
+    def layer_count(self):
+        return len(self.__layers)
 
     '''
     得到层的迭代器
