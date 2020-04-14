@@ -26,7 +26,6 @@ class Loss(object):
         raise Exception("__call__ not impliment")
 
 
-
 '''
 均方误差损失函数
 '''
@@ -36,7 +35,7 @@ class Mse(Loss):
         self.__grad = None
 
     def __call__(self, y_true, y_pred):
-        err = y_true - y_pred
+        err = y_pred - y_true
         loss =  (err**2).mean(axis=0)/2
 
         n = y_true.shape[0]

@@ -18,8 +18,6 @@ class Dense(Layer):
 
     def __init__(self, *outshape, **kargs):
         #print("Dense kargs:", kargs)
-
-
         #参数
         self.__W = None
         self.__b = None
@@ -108,15 +106,16 @@ class Dropout(Layer):
     tag='Dropout'
 
     '''
-    drop: 随机丢弃比例
+    keep_prob: 保留概率取值区间为(0, 1]
     '''
     def __init__(self, *outshape, **kargs):
-        self.__drop = 0.0
-
-        if 'drop' in kargs:
-            self.__drop == kargs['drop']
+        self.__keep_prob = 1
+        if 'keep_prob' in kargs:
+            self.__keep_prob = kargs['keep_prob']
 
         super().__init__(-1, **kargs)
+        #pdb.set_trace()
+        self.__mark = None
 
     def init_params(self):
         pass
@@ -126,18 +125,30 @@ class Dropout(Layer):
         return []
 
     def forward(self, in_batch, training=False):
-        if not training or self.__drop < 1e-8:
+        kp = self.__keep_prob
+        #pdb.set_trace()
+        if not training or kp <= 0 or kp>=1:
             return in_batch
 
         #生成[0, 1)直接的均价分布
-        tmp = np.random.uniform(size=in_batch.shape).reshape(-1)
-        #得到丢弃的索引并随机打乱
-        indices = tmp <= self.__drop
-        indices = indices.reshape(in_batch.shape)
-        #丢弃数据
-        in_batch[indices] = 0
+        tmp = np.random.uniform(size=in_batch.shape)
+        #保留/丢弃索引
+        mark = (tmp <= kp).astype(int)
+        #丢弃数据, 并拉伸保留数据
+        out = (mark * in_batch)/kp
 
-        return in_batch
+        self.__mark = mark
+
+        return out
 
     def backward(self, gradient):
-        return gradient
+        #pdb.set_trace()
+        if self.__mark is None:
+            return gradient
+
+        out = (self.__mark * gradient)/self.__keep_prob
+
+        return out
+
+    def reset(self):
+        self.__mark = None

@@ -1,5 +1,7 @@
 # coding=utf-8
 
+import pdb
+
 import numpy as np
 from cutedl.model import Layer, LayerParam
 from cutedl import utils
@@ -18,7 +20,7 @@ class Simplelayer(Layer):
         shape = self.inshape + self.outshape
         #print("inshape:", self.inshape)
         #print("outshape:", self.outshape)
-        #print("inshape+outshape:", shape)
+        print("inshape+outshape:", shape)
 
         n = utils.flat_shape(self.inshape)
         n *= utils.flat_shape(self.outshape)
@@ -43,6 +45,6 @@ class Simplelayer(Layer):
     def backward(self, gradient):
         grad = self.activation.grad(gradient)
         self.__W.gradient = self.__W.value
-
+        #pdb.set_trace()
         res = grad @ self.__W.value.T
         return res

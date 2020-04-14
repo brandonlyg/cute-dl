@@ -3,6 +3,8 @@
 import os
 import pdb
 import pickle
+import numpy as np
+
 from model import Model
 import reguls
 
@@ -16,12 +18,18 @@ class Session(object):
     '''
     model: Model对象
     loss: Loss对象
-    optimizer: Optimizer对象
+    optimizer: Optimizer对象, 学习率优化器
+    genoptms: list[Optimizer]对象, 广义参数优化器列表,
+                    列表中的优化器将会在optimizer之前按顺序执行
     '''
-    def __init__(self, model, loss, optimizer):
+    def __init__(self, model, loss, optimizer, genoptms=None):
         self.__model = model
         self.__loss = loss
         self.__optimizer = optimizer
+        self.__genoptms = genoptms
+
+        #拟合开关, 关闭时fit终止
+        self.__fit_switch = True
 
     @property
     def model(self):
@@ -42,19 +50,155 @@ class Session(object):
     '''
     def batch_train(self, data, label):
         #使用模型预测
-        out = self.__model.predict(data, training=True)
+        y_pred = self.__model.predict(data, training=True)
         #使用损失函数评估误差
-        loss = self.__loss(out, label)
+        loss = self.__loss(label, y_pred)
         grad = self.__loss.gradient
         #pdb.set_trace()
         #反向传播梯度
         self.__model.backward(self.__loss.gradient)
 
-        #更新模型参数
+        #执行广义优化器更新参数
+        if self.__genoptms is not None:
+            for optm in self.__genoptms:
+                optm(self.__model)
+
+        #执行学习率优化器更新参数
         self.__optimizer(self.__model)
 
         return loss
 
+    #停止训练
+    def stop_fit(self):
+        self.__fit_switch = False
+
+    '''
+    自动分批训练拟合模型
+    data  训练数据集 Dataset对象
+    epochs 训练轮数
+    kargs
+        val_data 验证数据集 Dataset对象
+        val_epochs 每val_epochs步使用val_data进行一次验证, 同时记录记录当前训练的损失值.
+        val_steps 和val_epochs的作用一样, 如果>0优先使用这个设置.
+        listeners 训练事件监听器. FitLisener类型.
+                  训练过程产生的事件有:
+                  epoch_start  每轮训练开始触发
+                  epoch_end    每轮训练结束触发
+                  val_start    每次验证开始触发
+                  val_end      每次验证结束触发
+
+    return 训练历史记录history
+        history格式:
+        {
+            'loss': [],
+            'val_loss': [],
+            'steps': [],
+            'val_pred': darray
+        }
+    '''
+    def fit(self, data, epochs, **kargs):
+        history = {
+            'loss': [],
+            'val_loss': [],
+            'steps': [],
+            'val_pred': None
+        }
+        self.__fit_switch = True
+
+        val_data = kargs.get('val_data')
+        val_epochs = kargs.get('val_epochs', 1)
+        val_steps = kargs.get('val_steps', 0)
+        listeners = kargs.get('listeners', [])
+
+        if val_data is None:
+            history['val_loss'] = None
+
+        if val_epochs <= 0 or val_epochs >= epochs:
+            val_epochs = 1
+
+        #事件派发
+        def event_dispatch(event):
+            #pdb.set_trace()
+            for listener in listeners:
+                listener(event, history)
+
+        #使用验证数据集验证
+        def validation():
+            if val_data is None:
+                return None, None
+
+            val_pred = None
+            losses = []
+            for batch_x, batch_y in val_data.as_iterator():
+                #pdb.set_trace()
+                y_pred = self.__model.predict(batch_x)
+                loss = self.__loss(batch_y, y_pred)
+                losses.append(loss)
+
+                if val_pred is None:
+                    val_pred = y_pred
+                else:
+                    val_pred = np.vstach((val_pred, y_pred))
+
+            loss = np.mean(np.array(losses))
+            return loss, val_pred
+
+        #记录
+        def record(loss, val_loss, val_pred, step):
+            history['loss'].append(loss)
+            history['steps'].append(step)
+
+            if history['val_loss'] is not None and val_loss is not None :
+                history['val_loss'].append(val_loss)
+                history['val_pred'] = val_pred
+
+        #显示训练进度
+        def display_progress(epoch, epochs, step, steps, loss, val_loss=-1):
+            prog = (step % steps)/steps
+            w = 20
+
+            str_epochs = ("%0"+str(len(str(epochs)))+"d/%d")%(epoch, epochs)
+
+            txt = (">"*(int(prog * w))) + (" "*w)
+            txt = txt[:w]
+            if val_loss < 0:
+                txt = txt + (" loss=%f   "%loss)
+                print("%s %s"%(str_epochs, txt), end='\r')
+            else:
+                txt = "loss=%f, val_loss=%f"%(loss, val_loss)
+                print("")
+                print("%s %s\n"%(str_epochs, txt))
+
+
+        ##
+        if val_steps <= 0:
+            val_steps = val_epochs * data.batch_count
+
+        #开始训练
+        step = 0
+        for epoch in range(epochs):
+            if not self.__fit_switch:
+                break
+
+            event_dispatch("epoch_start")
+            for batch_x, batch_y in data.as_iterator():
+                if not self.__fit_switch:
+                    break
+                #pdb.set_trace()
+                loss = self.batch_train(batch_x, batch_y)
+                step += 1
+                if step % val_steps == 0:
+                    event_dispatch("val_start")
+                    val_loss, val_pred = validation()
+                    record(loss, val_loss, val_pred, step)
+                    event_dispatch("val_end")
+                    display_progress(epoch+1, epochs, step, val_steps, loss, val_loss)
+                else:
+                    display_progress(epoch+1, epochs, step, val_steps, loss)
+
+            event_dispatch("epoch_end")
+
+        return history
 
     '''
     保存session
@@ -89,3 +233,27 @@ class Session(object):
         sess.set_model(model)
 
         return sess
+
+
+'''
+拟合过程监听器
+'''
+class FitListener(object):
+
+    '''
+    events  监听事件的列表
+    kargs:
+        callback 回调函数
+    '''
+    def __init__(self, *events, **kargs):
+        self.__events = set(events)
+
+        if 'callback' not in kargs:
+            raise Exception("miss param 'callback'")
+        self.__callback = kargs['callback']
+
+    def __call__(self, event, history):
+        if event not in self.__events:
+            return
+
+        self.__callback(history)

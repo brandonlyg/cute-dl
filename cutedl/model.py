@@ -122,13 +122,12 @@ class Layer(object):
     *inshape: 输入形状
     '''
     def join(self, pre_layer, *inshape):
+        self.__inshape = pre_layer.outshape
+        if len(inshape) != 0:
+            self.__inshape = inshape
+
         if self.__outshape == (-1,):
-            self.__inshape = pre_layer.inshape
-            self.__outshape = pre_layer.outshape
-        else:
-            self.__inshape = pre_layer.outshape
-            if len(inshape) != 0:
-                self.__inshape = inshape
+            self.__outshape = self.__inshape
 
         self.__id = pre_layer.layer_id + 1
         self.__name = '/%d-%s'%(self.__id, self.tag)
