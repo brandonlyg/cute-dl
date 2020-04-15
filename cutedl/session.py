@@ -3,6 +3,7 @@
 import os
 import pdb
 import pickle
+import time
 import numpy as np
 
 from model import Model
@@ -93,7 +94,8 @@ class Session(object):
             'loss': [],
             'val_loss': [],
             'steps': [],
-            'val_pred': darray
+            'val_pred': darray,
+            'cost_time': float
         }
     '''
     def fit(self, data, epochs, **kargs):
@@ -101,7 +103,8 @@ class Session(object):
             'loss': [],
             'val_loss': [],
             'steps': [],
-            'val_pred': None
+            'val_pred': None,
+            'cost_time': 0
         }
         self.__fit_switch = True
 
@@ -176,6 +179,7 @@ class Session(object):
 
         #开始训练
         step = 0
+        history['cost_time'] = time.time()
         for epoch in range(epochs):
             if not self.__fit_switch:
                 break
@@ -197,6 +201,8 @@ class Session(object):
                     display_progress(epoch+1, epochs, step, val_steps, loss)
 
             event_dispatch("epoch_end")
+
+        history['cost_time'] = time.time() - history['cost_time']
 
         return history
 

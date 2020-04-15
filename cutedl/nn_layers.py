@@ -37,8 +37,8 @@ class Dense(Layer):
         wval = np.random.randn(shape[0], shape[1]) * std
         bval = np.zeros(shape[1])
 
-        self.__W = LayerParam(self.name, 'W', wval)
-        self.__b = LayerParam(self.name, 'b', bval)
+        self.__W = LayerParam(self.name, 'weight', wval)
+        self.__b = LayerParam(self.name, 'bias', bval)
 
     @property
     def params(self):

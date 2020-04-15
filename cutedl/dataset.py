@@ -40,4 +40,6 @@ class Dataset(object):
         bs = self.__batch_size
         bc = self.__batch_count
         for i in range(bc):
-            yield (self.__data[i*bs:i*bs+bs], self.__label[i*bs:i*bs+bs])
+            start = i * bs
+            end = start + bs
+            yield (self.__data[start:end], self.__label[start:end])

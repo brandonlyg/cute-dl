@@ -4,7 +4,7 @@ import pdb
 import re
 
 '''
-优化器
+所有优化器的父类
 '''
 class Optimizer(object):
 
@@ -21,7 +21,7 @@ class Optimizer(object):
     '''
     @property
     def pattern(self):
-        return '^/.+/W.*'
+        return '^/.+/weight.*'
 
     '''
     得到名字匹配pattern的参数
@@ -45,6 +45,16 @@ class Optimizer(object):
     '''
     def update_param(self, model, param):
         raise Exception("not impliment")
+
+
+'''
+所有学习率优化器的基础类
+'''
+class LROptimizer(Optimizer):
+
+    @property
+    def pattern(self):
+        return '^/.+/(weight|bias).*'
 
 '''
 L1 正则化
@@ -72,13 +82,14 @@ class L2(Optimizer):
         self.__damping = damping
 
     def update_param(self, model, param):
+        #pdb.set_trace()
         param.value = (1 - self.__damping) * param.value
 
 
 '''
 固定学习率优化器
 '''
-class Fixed(Optimizer):
+class Fixed(LROptimizer):
 
     '''
     lt: 学习率
@@ -87,5 +98,6 @@ class Fixed(Optimizer):
         self.__lt = lt
 
     def update_param(self, model, param):
+        #pdb.set_trace()
         param.value -= self.__lt * param.gradient
         param.udt += 1
