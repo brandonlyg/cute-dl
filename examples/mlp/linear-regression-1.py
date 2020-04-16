@@ -169,39 +169,8 @@ def fit2():
 
     fit_report(history, report_path+'02.png', 15)
 
-
-'''
-同时使用L2和dropout缓解过拟合
-'''
-def fit3():
-    print("fit3")
-    model = Model([
-        nn.Dense(128, inshape=1, activation='relu'),
-        nn.Dense(64, activation='relu'),
-        nn.Dropout(0.9),
-        nn.Dense(1)
-    ])
-    model.assemble()
-
-    sess = Session(model,
-                loss=losses.Mse(),
-                optimizer = optimizers.Fixed(),
-                genoptms = [optimizers.L2(0.0005)]
-            )
-
-    history = sess.fit(ds, 200000, val_data=val_ds, val_epochs=1000,
-                    listeners=[
-                        FitListener('val_end', callback=lambda h:on_val_end(sess, h))
-                        ]
-                    )
-
-    fit_report(history, report_path+'03.png', 15)
-
-
-
 if __name__ == '__main__':
     #fit0()
     #fit1()
     fit2()
-    #fit3()
     pass
