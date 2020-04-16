@@ -5,6 +5,7 @@ import pdb
 import numpy as np
 from model import Layer, LayerParam
 import utils
+import dlmath
 
 '''
 同样神经网络层
@@ -152,3 +153,31 @@ class Dropout(Layer):
 
     def reset(self):
         self.__mark = None
+
+
+'''
+softmax层
+'''
+class Softmax(Layer):
+    tag='softmax'
+
+    def init_params(self):
+        pass
+
+    @property
+    def params(self):
+        return []
+
+    def forward(self, in_batch, training=False):
+        if training: #如果是训练阶段, 不做任何处理
+            return training
+
+        out, _ = utils.reduce(in_batch)
+        out = np.argmax(out, axis=1)
+        return out
+
+    def backward(self, gradient):
+        return gradient
+
+    def reset(self):
+        pass
