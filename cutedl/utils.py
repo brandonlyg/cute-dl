@@ -38,21 +38,13 @@ return
     out: 缩小后的数据
     diff: 最大值和最小值之差
 '''
-def reduce(x):
+def reduce(x, axis=None):
     #对数据进行自动缩小
-    max = np.max(x)
-    min = np.min(x)
+    max = np.max(x, axis=axis)
+    min = np.min(x, axis=axis)
     diff = max - min + 1e-8
 
-    if diff < 1.0: #这种情况下保持方差不变
-        diff = 1.0
-
-    out = x
-    #如果数据不在[-1, -1]区间内, 进行缩小
-    if abs(min) > 1 or abs(max) > 1:
-        out = (x - min)/dif
-    else:
-        diff = 1.0
+    out = (x - min)/diff
 
     return out, diff
 

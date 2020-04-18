@@ -52,12 +52,13 @@ class Mse(Loss):
 
 
 '''
-二分类交叉熵损失函数
+二元交叉熵损失函数
 '''
 class BinaryCrossentropy(Loss):
 
     '''
-    form_logits: 是否把输入数据转换成概率形式. 默认True. 如果输入数据已经是概率形式可以把这个参数设置成False。
+    form_logits: 是否把输入数据转换成概率形式. 默认True.
+                如果输入数据已经是概率形式可以把这个参数设置成False。
     '''
     def __init__(self, form_logits=True):
         self.__form_logists = form_logits
@@ -67,36 +68,37 @@ class BinaryCrossentropy(Loss):
     输入形状为(m, 1)
     '''
     def __call__(self, y_true, y_pred):
-        if not self.__form_logists:
-            loss = -y_true*np.log(y_pred) - (1-y_true)*np.log(1-y_pred)
-            self.__grad = y_pred - y_true
-            return loss
+        #pdb.set_trace()
+        m = y_true.shape[0]
 
-        #对数据进行自动缩小
-        y_pred, diff = utils.reduce(y_pred)
+        if not self.__form_logists:
+            #计算误差
+            loss = (-y_true*np.log(y_pred)-(1-y_true)*np.log(1-y_pred))/m
+            #计算梯度
+            self.__grad = (y_pred - y_true)/(m*y_pred*(1-y_pred))/m
+            return loss.sum()
 
         #转换成概率
-        y_pred = dlmath.sigmoid(y_pred)
+        y_prob = dlmath.sigmoid(y_pred)
         #计算误差
-        loss = -y_true*np.log(y_pred) - (1-y_true)*np.log(1-y_pred)
-
+        loss = (-y_true*np.log(y_prob) - (1-y_true)*np.log(1-y_prob))/m
         #计算梯度
-        grad = y_pred - y_true
-        self.__grad = grad/scope
+        self.__grad = (y_prob - y_true)/m
 
-        return loss
+        return loss.sum()
 
     @property
     def gradient(self):
         return self.__grad
 
 '''
-多分类交叉熵损失函数
+多类别交叉熵损失函数
 '''
 class CategoricalCrossentropy(Loss):
 
     '''
-    form_logits: 是否把输入数据转换成概率形式. 默认True. 如果输入数据已经是概率形式可以把这个参数设置成False。
+    form_logits: 是否把输入数据转换成概率形式. 默认True.
+                如果输入数据已经是概率形式可以把这个参数设置成False。
     '''
     def __init__(self, form_logits=True):
         self.__form_logists = form_logits
@@ -106,23 +108,24 @@ class CategoricalCrossentropy(Loss):
     输入形状为(m, n)
     '''
     def __call__(self, y_true, y_pred):
+        m = y_true.shape[0]
+        #pdb.set_trace()
         if not self.__form_logists:
-            loss = -y_true*np.log(y_pred)
-            self.__grad = y_pred - y_true
-            return loss
+            #计算误差
+            loss = (-y_true*np.log(y_pred)).sum(axis=0)/m
+            #计算梯度
+            self.__grad = -y_true/(m*y_pred)
+            return loss.sum()
 
-        #自动缩小
-        y_pred, diff = utils.reduce(y_pred)
-
+        m = y_true.shape[0]
         #转换成概率分布
-        y_pred = dlmath.prob_distribution(y_pred)
+        y_prob = dlmath.prob_distribution(y_pred)
         #计算误差
-        loss = -y_true*np.log(y_pred)
+        loss = (-y_true*np.log(y_prob)).sum(axis=0)/m
         #计算梯度
-        grad = y_pred - y_true
-        self.__grad = grad/diff
+        self.__grad  = (y_prob - y_true)/m
 
-        return loss
+        return loss.sum()
 
     @property
     def gradient(self):

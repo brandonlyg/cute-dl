@@ -7,12 +7,12 @@ import numpy as np
 '''
 
 def sigmoid(x):
-    return 1/(1+np.exp(-x))
+    return 1.0/(1.0+np.exp(-x))
 
 def prob_distribution(x):
     expval = np.exp(x)
-    sum = expval.sum()
+    sum = expval.sum(axis=1) + 1e-8
 
-    prob_d = expval/(sum + 1e-8)
+    prob_d = expval/sum
 
     return prob_d

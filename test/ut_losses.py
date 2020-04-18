@@ -2,6 +2,7 @@
 
 import sys
 sys.path.append("..")
+sys.path.append("../cutedl")
 
 import unittest
 from unittest import TestCase
@@ -15,17 +16,51 @@ import numpy as np
 class TestLose(TestCase):
 
     def test_mse(self):
-        mse = loss.Mse()
+        print("test Mse")
+        mse = losses.Mse()
 
         y_true = np.array([[3], [5], [7]])
         y_pred = np.array([[1], [2], [3]])
 
-        lres = mse(y_true, y_pred)
+        loss = mse(y_true, y_pred)
+        print("loss: ", loss)
 
-        self.assertTrue(lres - 29/2 < 0.00001)
+    '''
+    测试二元交叉熵损失函数
+    '''
+    def test_binary_cross_entropy(self):
+        print("test BinaryCrossentropy")
+        loss = losses.BinaryCrossentropy()
 
-        tmp = np.array([[2],[3],[4]])/3
-        self.assertEqual(mse.gradient.tolist(), tmp.tolist())
+        y_true = np.array([[1], [0], [1], [0]])
+        y_pred = np.array([[3], [5], [2], [6]])
+
+        lres = loss(y_true, y_pred)
+        print("loss: ", lres)
+        self.assertEqual(loss.gradient.shape, (4, 1))
+
+        y_pred = np.array([[-0.5], [0.7], [-0.2], [0.3]])
+        lres = loss(y_true, y_pred)
+        print("loss: ", lres)
+
+    '''
+    多类别交叉熵损失函数
+    '''
+    def test_categorical_cross_entropy(self):
+        print("test CategoricalCrossentropy")
+        cce = losses.CategoricalCrossentropy()
+
+        y_true = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+        y_pred = np.array([[3, 2, 1], [6, 4, 8], [5, 3, 1]])
+
+        loss = cce(y_true, y_pred)
+        print("loss: ", loss)
+        self.assertEqual(cce.gradient.shape, (3, 3))
+
+        y_pred = np.array([[-0.5, 0.2, 0.1], [-0.1, 0.1, 0.05], [-0.1, 0.2, -0.2]])
+        loss = cce(y_true, y_pred)
+        print("loss: ", loss)
+
 
 
 if __name__ == '__main__':
