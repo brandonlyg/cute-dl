@@ -9,6 +9,7 @@ matplotlib 3.2.1 <br>
 -- cutedl 框架代码 <br>
 -- test   单元测试 <br>
 -- examples 示例
+-- docs  相关文档 <br>
 
 ## 示例说明
 examples目录下是所有的示例 <br>

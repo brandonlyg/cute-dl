@@ -9,9 +9,12 @@ import numpy as np
 def sigmoid(x):
     return 1.0/(1.0+np.exp(-x))
 
+'''
+x shape (m, n)
+'''
 def prob_distribution(x):
     expval = np.exp(x)
-    sum = expval.sum(axis=1) + 1e-8
+    sum = expval.sum(axis=1).reshape(-1,1) + 1e-8
 
     prob_d = expval/sum
 

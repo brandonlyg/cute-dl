@@ -36,15 +36,18 @@ class Mnist(object):
         dir = self.__dir
 
         #读取训练数据集
+        print("read train dataset")
         data = self.__read_image(dir+"/train-images-idx3-ubyte")
         label = self.__read_label(dir+"/train-labels-idx1-ubyte")
         train = self.__build_dataset(data, label, batch_size, flatting, normalize)
-
+        #pdb.set_trace()
         #读取测试数据集
+        print("read test dataset")
         data = self.__read_image(dir+"/t10k-images-idx3-ubyte")
         label = self.__read_label(dir+"/t10k-labels-idx1-ubyte")
         test = self.__build_dataset(data, label, batch_size, flatting, normalize)
 
+        print("return datasets")
         return train, test
 
     def __build_dataset(self, data, label, batch_size, flatting, normalize):
@@ -52,7 +55,7 @@ class Mnist(object):
         if flatting:
             m = data.shape[0]
             data = data.reshape((m, -1))
-            label = data.reshape((m, -1))
+            label = label.reshape((m, -1))
         #标准化
         if normalize:
             data = data/255
@@ -105,7 +108,7 @@ class Mnist(object):
             arr = struct.unpack("%dB"%m, d)
 
             #one-hot编码
-            pdb.set_trace()
+            #pdb.set_trace()
             res = np.zeros((m, 10))
             res[range(m), list(arr)] = 1
 

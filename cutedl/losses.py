@@ -120,6 +120,7 @@ class CategoricalCrossentropy(Loss):
         m = y_true.shape[0]
         #转换成概率分布
         y_prob = dlmath.prob_distribution(y_pred)
+        #pdb.set_trace()
         #计算误差
         loss = (-y_true*np.log(y_prob)).sum(axis=0)/m
         #计算梯度

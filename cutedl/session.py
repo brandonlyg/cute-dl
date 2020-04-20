@@ -141,7 +141,7 @@ class Session(object):
                 if val_pred is None:
                     val_pred = y_pred
                 else:
-                    val_pred = np.vstach((val_pred, y_pred))
+                    val_pred = np.vstack((val_pred, y_pred))
 
             loss = np.mean(np.array(losses))
             return loss, val_pred
@@ -195,8 +195,8 @@ class Session(object):
                     event_dispatch("val_start")
                     val_loss, val_pred = validation()
                     record(loss, val_loss, val_pred, step)
-                    event_dispatch("val_end")
                     display_progress(epoch+1, epochs, step, val_steps, loss, val_loss)
+                    event_dispatch("val_end")
                 else:
                     display_progress(epoch+1, epochs, step, val_steps, loss)
 
@@ -262,4 +262,28 @@ class FitListener(object):
         if event not in self.__events:
             return
 
+        #pdb.set_trace()
         self.__callback(history)
+
+
+'''
+条件回调监听器
+func    满足条件后的回调函数
+key     监视key, listener会监视history[key]的值
+times   当history[key]属性连续times次没有得到更小的值时停止训练
+'''
+def condition_callback(func, key, times, event='val_end'):
+    def cb(func, history):
+        losses = history['val_loss']
+        if len(losses) <= times:
+            return
+
+        losses = losses[times:]
+        min_loss = min(losses)
+        idx = losses.index(min_loss)
+        if len(losses) - idx > times:
+            func()
+
+    listener = FitListener(event, callback=lambda h:cb(func, h))
+
+    return listener
