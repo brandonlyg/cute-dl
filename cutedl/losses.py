@@ -75,7 +75,7 @@ class BinaryCrossentropy(Loss):
             #计算误差
             loss = (-y_true*np.log(y_pred)-(1-y_true)*np.log(1-y_pred))/m
             #计算梯度
-            self.__grad = (y_pred - y_true)/(m*y_pred*(1-y_pred))/m
+            self.__grad = (y_pred - y_true)/(m*y_pred*(1-y_pred))
             return loss.sum()
 
         #转换成概率
