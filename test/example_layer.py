@@ -26,7 +26,7 @@ class Simplelayer(Layer):
         n *= utils.flat_shape(self.outshape)
 
         w_val = np.arange(n).reshape(shape).astype('float64')
-        self.__W = LayerParam(self.name, 'W', w_val)
+        self.__W = LayerParam(self.name, 'weight', w_val)
 
     @property
     def params(self):
@@ -38,6 +38,7 @@ class Simplelayer(Layer):
     training: 是否正在训练
     '''
     def forward(self, in_batch, training=False):
+        #pdb.set_trace()
         out = in_batch @ self.__W.value
         return self.activation(out)
 

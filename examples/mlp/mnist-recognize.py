@@ -56,7 +56,7 @@ def fit_report(history, fpath, skip=0):
     plt.legend()
 
     plt.subplot(212)
-    plt.ylim((0, 1.3))
+    plt.ylim((0.6, 1.2))
     plt.plot(x, val_acc, 'g', label="Validation accuracy")
     txt = 'val_accuracy max:%f, final:%f\n'%(max(val_acc), val_acc[-1])
     plt.text(x[-1], 1.1, txt,
@@ -71,7 +71,7 @@ def fit_report(history, fpath, skip=0):
 '''
 计算准确率
 '''
-def accuracy(history):
+def accuracy(sess, history):
     val_pred = history['val_pred']
     y_pred = np.argmax(val_pred, axis=1)
     y_true = np.argmax(ds_test.label, axis=1)
@@ -80,8 +80,24 @@ def accuracy(history):
     if 'val_accuracy' not in history:
         history['val_accuracy'] = []
 
-    history['val_accuracy'].append(acc)
-    print("\naccuracy: ", acc, end='\r')
+    val_accs = history['val_accuracy']
+    val_accs.append(acc)
+    print("accuracy: ", acc)
+
+    #连续20次大于91%停止训练
+    count = len(val_accs)
+    max = 20
+    if count>max:
+        stop = True
+        for i in range(count-max, count):
+            #pdb.set_trace()
+            if val_accs[i] <= 0.91:
+                stop = False
+                break
+
+        if stop:
+            print("val accuracy >0.91 %d times. stop fit!"%max)
+            sess.stop_fit()
 
 
 report_path = "./pics/mnist-recoginze-"
@@ -89,7 +105,7 @@ report_path = "./pics/mnist-recoginze-"
 '''
 训练模型
 '''
-def fit():
+def fit(report_name, optimizer):
     inshape = ds_train.data.shape[1]
     model = Model([
                 nn.Dense(10, inshape=inshape, activation='relu')
@@ -98,23 +114,93 @@ def fit():
 
     sess = Session(model,
             loss=losses.CategoricalCrossentropy(),
-            optimizer=optimizers.Fixed(0.001)
+            optimizer=optimizer
             )
 
-    stop_fit = session.condition_callback(lambda :sess.stop_fit(), 'val_loss', 10)
+    stop_fit = session.condition_callback(lambda :sess.stop_fit(), 'val_loss', 20)
 
     #pdb.set_trace()
-    history = sess.fit(ds_train, 20000, val_epochs=5, val_data=ds_test,
+    history = sess.fit(ds_train, 5000, val_epochs=1, val_data=ds_test,
                         listeners=[
                             stop_fit,
-                            session.FitListener('val_end', callback=accuracy)
+                            session.FitListener('val_end', callback=lambda h: accuracy(sess, h))
                         ]
                     )
 
-    fit_report(history, report_path+"0.png")
+    fit_report(history, report_path+report_name)
+
+'''
+固定学习率
+'''
+def fit0():
+    lr = 0.0001
+    print("fit1 lr:", lr)
+    fit('0.png', optimizers.Fixed(lr))
+
+def fit1():
+    lr = 0.2
+    print("fit0 lr:", lr)
+    fit('1.png', optimizers.Fixed(lr))
+
+def fit2():
+    lr = 0.01
+    print("fit2 lr:", lr)
+    fit('2.png', optimizers.Fixed(lr))
+
+'''
+Momentum优化器
+'''
+def fit_use_momentum():
+    lr = 0.002
+    dpr = 0.9
+    print("fit_use_momentum lr=%f, dpr:%f"%(lr, dpr))
+    fit('momentum.png', optimizers.Momentum(lr, dpr))
+
+'''
+Adagrad优化器
+'''
+def fit_use_adagrad():
+    lr = 0.001
+    print("fit_use_adagrad lr=%f"%lr)
+    fit('adagrad.png', optimizers.Adagrad(lr))
+
+'''
+RMSProp优化器
+'''
+def fit_use_rmsprop():
+    sdpr = 0.99
+    lr=0.0001
+    print("fit_use_rmsprop lr=%f sdpr=%f"%(lr, sdpr))
+    fit('rmsprop.png', optimizers.RMSProp(lr, sdpr))
+
+'''
+Adadelta优化器
+'''
+def fit_use_adadelta():
+    dpr = 0.99
+    print("fit_use_adadelta dpr=%f"%dpr)
+    fit('adadelta.png', optimizers.Adadelta(dpr))
+
+'''
+Adam优化器
+'''
+def fit_use_adam():
+    lr = 0.0001
+    mdpr = 0.9
+    sdpr = 0.99
+    print("fit_use_adam lr=%f, mdpr=%f, sdpr=%f"%(lr, mdpr, sdpr))
+    fit('adam.png', optimizers.Adam(lr, mdpr, sdpr))
 
 
 if '__main__' == __name__:
-    fit()
+    #fit0()
+    #fit1()
+    #fit2()
+
+    #fit_use_momentum()
+    #fit_use_adagrad()
+    #fit_use_rmsprop()
+    #fit_use_adadelta()
+    fit_use_adam()
 
     pass

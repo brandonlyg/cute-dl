@@ -168,9 +168,9 @@ class Session(object):
                 txt = txt + (" loss=%f   "%loss)
                 print("%s %s"%(str_epochs, txt), end='\r')
             else:
-                txt = "loss=%f, val_loss=%f"%(loss, val_loss)
-                print("")
-                print("%s %s\n"%(str_epochs, txt))
+                txt = "loss=%f, val_loss=%f%s"%(loss, val_loss, ''*w)
+                #print("")
+                print("%s %s"%(str_epochs, txt))
 
 
         ##
@@ -197,6 +197,8 @@ class Session(object):
                     record(loss, val_loss, val_pred, step)
                     display_progress(epoch+1, epochs, step, val_steps, loss, val_loss)
                     event_dispatch("val_end")
+
+                    print("")
                 else:
                     display_progress(epoch+1, epochs, step, val_steps, loss)
 
@@ -274,14 +276,25 @@ times   当history[key]属性连续times次没有得到更小的值时停止训�
 '''
 def condition_callback(func, key, times, event='val_end'):
     def cb(func, history):
-        losses = history['val_loss']
+        losses = history[key]
         if len(losses) <= times:
             return
 
         losses = losses[times:]
+
         min_loss = min(losses)
-        idx = losses.index(min_loss)
-        if len(losses) - idx > times:
+        min_idx = losses.index(min_loss)
+
+        stop = False
+        if len(losses) - min_idx > times:
+            #已连续times次监视值没有更小值
+            stop = True
+        elif min_idx == len(losses) - 1 and min_idx + 1 >= times:
+            start = losses[min_idx+1-times]
+            if start - min_loss < 0.001: #减少的太少也可认为没有减少
+                stop = True
+
+        if stop:
             func()
 
     listener = FitListener(event, callback=lambda h:cb(func, h))
