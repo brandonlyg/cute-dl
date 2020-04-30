@@ -193,7 +193,7 @@ def fit_use_adam():
 
 
 if '__main__' == __name__:
-    #fit0()
+    fit0()
     #fit1()
     #fit2()
 
@@ -201,6 +201,6 @@ if '__main__' == __name__:
     #fit_use_adagrad()
     #fit_use_rmsprop()
     #fit_use_adadelta()
-    fit_use_adam()
+    #fit_use_adam()
 
     pass

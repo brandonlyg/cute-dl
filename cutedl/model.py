@@ -31,9 +31,12 @@ class LayerParam(object):
     def name(self):
         return self.__name
 
-    def reset(self):
-        self.gradient = None
-        self.udt = 0
+    @classmethod
+    def reset(cls, p):
+        layer_name = os.path.dirname(p.name)
+        name = p.name[len(layer_name)+1:]
+        new_p = LayerParam(p.name, name, p.value)
+        return new_p
 
 '''
 层的抽象类型
@@ -42,43 +45,40 @@ class Layer(object):
     tag = 'Layer'
 
     '''
-    outshape: 输出形状 2 或者 (2,3)
-    kargs:
-        activation: 激活函数的名字
-        inshape: 输入形状
+    activation: 激活函数的名字
     '''
-    def __init__(self, *outshape, **kargs):
-        #输出形状
-        if len(outshape) == 1 and type(outshape[0]) == type(()):
-            self.__outshape = outshape[0]
-        else:
-            self.__outshape = outshape
-
-        #输入形状
-        self.__inshape = None
+    def __init__(self, activation='linear'):
+        # #输出形状
+        # self.__outshape = self.check_ioshape(outshape)
+        # if self.__outshape is None:
+        #     raise Exception("invalid outshape: "+str(outshape))
+        #
+        # #输入形状
+        # self.__inshape = self.check_ioshape(inshape)
+        # if inshape is not None and self.__inshape is None:
+        #     raise Exception("invalid inshape: "+str(inshape))
 
         #得到激活函数
-        self.__activation = activations.get('linear')
+        self.__activation = activations.get(activation)
 
         #层在模型中的id, 是层在模型中的索引
         self.__id = 0
         #层的名字
         self.__name = '/%d-%s'%(self.__id, self.tag)
 
-        #得到可选参数
-        #print("Layer kargs:", kargs)
-        if 'inshape' in kargs:
-            self.__inshape = kargs['inshape']
-            if type(self.__inshape) != type(()):
-                self.__inshape = (self.__inshape,)
-            #print("------inshape:", self.__inshape)
-
-        if 'activation' in kargs:
-            self.__activation = activations.get(kargs['activation'])
-
-
-        if self.__inshape is not None:
+        if self.inshape is not None:
             self.init_params()
+
+    '''
+    检查形状
+    '''
+    def check_shape(self, shape):
+        if type(outshape) == type(1):
+            return (outshape, )
+        elif type(outshape) == type((1, 2)):
+            return shape
+        else:
+            return None
 
     @property
     def layer_id(self):
@@ -106,11 +106,11 @@ class Layer(object):
 
     @property
     def inshape(self):
-        return self.__inshape
+        raise Exception("the inshape property not implement!")
 
     @property
     def outshape(self):
-        return self.__outshape
+        raise Exception("the outshape property not implement!")
 
     @property
     def activation(self):
@@ -119,21 +119,20 @@ class Layer(object):
     '''
     加入到模型中
     pre_layer: 前一个层
-    *inshape: 输入形状
     '''
-    def join(self, pre_layer, *inshape):
-        self.__inshape = pre_layer.outshape
-        if len(inshape) != 0:
-            self.__inshape = inshape
-
-        if self.__outshape == (-1,):
-            self.__outshape = self.__inshape
+    def join(self, pre_layer):
+        # self.inshape = pre_layer.outshape
+        # if inshape is not None:
+        #     self.inshape = inshape
+        #
+        # if self.__outshape == (-1,):
+        #     self.__outshape = self.__inshape
 
         self.__id = pre_layer.layer_id + 1
         self.__name = '/%d-%s'%(self.__id, self.tag)
 
-        self.init_params()
-
+        if self.inshape is not None:
+            self.init_params()
 
     '''
     向前传播

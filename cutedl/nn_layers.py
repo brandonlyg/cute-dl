@@ -17,16 +17,30 @@ import dlmath
 class Dense(Layer):
     tag='Dense'
 
-    def __init__(self, *outshape, **kargs):
+    def __init__(self, outshape, inshape=None, activation='relu'):
+        #输出形状(int,)
+        if type(outshape) != type(1):
+            raise Exception("invalid outshape: "+str(outshape))
+
+        self.__outshape = self.check_shape(outshape)
+
+        #输入形状
+        self.__inshape = None
+        if inshape is not None:
+            if type(inshape) != type(1):
+                raise Exception("invalid inshape: "+str(inshape))
+
+            self.__in_shape = self.check_shape(inshape)
+
         #print("Dense kargs:", kargs)
         #参数
         self.__W = None
         self.__b = None
 
-        super().__init__(*outshape, **kargs)
+        super().__init__(activation)
 
-        #输入数据的形状
-        self.__in_shape = None
+        #输入数据的原始形状
+        self.__in_batch_shape = None
         #输入数据, 已经转换成合适的形状
         self.__in_batch = None
 
@@ -34,7 +48,7 @@ class Dense(Layer):
 
         #展平纬度, 初始化参数值
         std = 0.01
-        shape = (utils.flat_shape(self.inshape), utils.flat_shape(self.outshape))
+        shape = self.__inshape + self.__outshape
         wval = np.random.randn(shape[0], shape[1]) * std
         bval = np.zeros(shape[1])
 
@@ -45,18 +59,33 @@ class Dense(Layer):
     def params(self):
         return [self.__W, self.__b]
 
+    def join(self, pre_layer):
+        #只取最后一个维度
+        inshape = pre_layer.outshape[-1]
+        self.__inshape = self.check_shape(inshape)
+
+        super().join(pre_layer)
+
+    @property
+    def inshape(self):
+        return self.__inshape
+
+    @property
+    def outshape(self):
+        return self.__outshape
+
     def forward(self, in_batch, training=False):
         W = self.__W.value
         b = self.__b.value
+        self.__in_batch_shape = in_batch.shape
 
-        wshape = W.shape
-        m = in_batch.shape[0]
-        self.__in_shape = in_batch.shape
-
-        #如果输入输入形状不和适, 转换成期望的形状
         in_x = in_batch
-        if self.__in_shape != (m, wshape[0]):
-            in_x = in_x.reshape((-1, wshape[0]))
+        if len(in_batch.shape) > 2:
+            #超过两个维度把数据转换成(m*k,n), 只取[m*(k-1):, :]
+            m = in_batch.shape[0]
+            n = in_batch.shape[-1]
+            k = utils.flat_shape(in_batch.shape)//(m*n)
+            in_x = in_batch.reshape((m*k, n))[m*(k-1):, :]
 
         self.__in_batch = in_x
 
@@ -80,24 +109,28 @@ class Dense(Layer):
 
         self.__b.gradient = grad.sum(axis=0)
         #pdb.set_trace()
-        #输入数据梯度 (m,inshape) = (m,outshape) @ (outshape, inshape)
-        grad_in_x = grad @ W.T
+        #数据梯度 (m,inshape) = (m,outshape) @ (outshape, inshape)
+        out_grad = grad @ W.T
 
-        #如果有需要的话还原形状
-        if grad_in_x.shape != self.__in_shape:
-            #pdb.set_trace()
-            grad_in_x = grad_in_x.reshape(self.__in_shape)
+        if len(self.__in_batch_shape) > 2:
+            #还原成输入数据的形状
+            m = self.__in_batch_shape[0]
+            n = self.__in_batch_shape[1]
+            k = utils.flat_shape(self.__in_batch_shape)//(m*n)
+            tmp = np.zeros(self.__in_batch_shape).reshape(m*k, n)
+            tmp[m*(k-1):, :] = out_grad
+            out_grad = tmp.reshape(self.__in_batch_shape)
 
-        return grad_in_x
-
+        return out_grad
 
     #重置当前层的状态
     def reset(self):
-        self.__W.reset()
-        self.__b.reset()
-
-        self.__in_shape = None
+        self.__in_batch_shape = None
         self.__in_batch = None
+
+        self.__W = LayerParam.reset(self.__W)
+        self.__b = LayerParam.reset(self.__b)
+
 
 
 '''
@@ -154,30 +187,30 @@ class Dropout(Layer):
     def reset(self):
         self.__mark = None
 
-
-'''
-softmax层
-'''
-class Softmax(Layer):
-    tag='softmax'
-
-    def init_params(self):
-        pass
-
-    @property
-    def params(self):
-        return []
-
-    def forward(self, in_batch, training=False):
-        if training: #如果是训练阶段, 不做任何处理
-            return training
-
-        out, _ = utils.reduce(in_batch)
-        out = np.argmax(out, axis=1)
-        return out
-
-    def backward(self, gradient):
-        return gradient
-
-    def reset(self):
-        pass
+#
+# '''
+# softmax层
+# '''
+# class Softmax(Layer):
+#     tag='softmax'
+#
+#     def init_params(self):
+#         pass
+#
+#     @property
+#     def params(self):
+#         return []
+#
+#     def forward(self, in_batch, training=False):
+#         if training: #如果是训练阶段, 不做任何处理
+#             return training
+#
+#         out, _ = utils.reduce(in_batch)
+#         out = np.argmax(out, axis=1)
+#         return out
+#
+#     def backward(self, gradient):
+#         return gradient
+#
+#     def reset(self):
+#         pass
