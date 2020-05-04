@@ -11,7 +11,20 @@ from cutedl import utils
 '''
 
 class Simplelayer(Layer):
-    tag = 'simplelayer'
+    tag = 'Simplelayer'
+
+    def __init__(self, outshape, inshape=None):
+        self.__outshape = self.check_shape(outshape)
+        self.__inshape = (-1,)
+
+        self.__W = None
+
+        if inshape is not None:
+            self.__inshape = self.check_shape(inshape)
+            if self.__inshape is None:
+                raise Exception("invalid inshape: %s"%str(inshape))
+
+        super().__init__()
 
     '''
     初始参数
@@ -31,6 +44,19 @@ class Simplelayer(Layer):
     @property
     def params(self):
         return [self.__W]
+
+    def set_prev(self, prev_layer):
+        #pdb.set_trace()
+        self.__inshape = prev_layer.outshape
+        super().set_prev(prev_layer)
+
+    @property
+    def inshape(self):
+        return self.__inshape
+
+    @property
+    def outshape(self):
+        return self.__outshape
 
     '''
     向前传播

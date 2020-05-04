@@ -28,9 +28,13 @@ class TestLayer(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.ly_0 = Simplelayer((3,3), inshape=2)
-        cls.ly_1 = Simplelayer((4,4))
+        cls.ly_1 = Simplelayer((4,4), inshape=(-1,-1))
 
-        cls.ly_1.join(cls.ly_0)
+        cls.ly_0.set_next(cls.ly_1)
+        cls.ly_1.set_prev(cls.ly_0)
+
+        cls.ly_0.init_params()
+        cls.ly_1.init_params()
 
         cls.ly_0_p = np.arange(2*3*3).reshape((2,3,3))
         cls.ly_1_p = np.arange(3*3*4*4).reshape((3,3,4,4))
@@ -77,6 +81,8 @@ class TestLayer(TestCase):
     def test_forward_backward(self):
         print("test layer forward")
         ly = Simplelayer(4, inshape=3)
+        ly.init_params()
+
         in_batch = np.arange(6).reshape((2,3))
         p = np.arange(12).reshape(3,4)
         out_batch = ly.forward(in_batch)

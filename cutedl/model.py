@@ -48,15 +48,6 @@ class Layer(object):
     activation: 激活函数的名字
     '''
     def __init__(self, activation='linear'):
-        # #输出形状
-        # self.__outshape = self.check_ioshape(outshape)
-        # if self.__outshape is None:
-        #     raise Exception("invalid outshape: "+str(outshape))
-        #
-        # #输入形状
-        # self.__inshape = self.check_ioshape(inshape)
-        # if inshape is not None and self.__inshape is None:
-        #     raise Exception("invalid inshape: "+str(inshape))
 
         #得到激活函数
         self.__activation = activations.get(activation)
@@ -66,16 +57,18 @@ class Layer(object):
         #层的名字
         self.__name = '/%d-%s'%(self.__id, self.tag)
 
-        if self.inshape is not None:
-            self.init_params()
+        #上一个层
+        self.__prev = None
+        #下一个层
+        self.__next = None
 
     '''
     检查形状
     '''
     def check_shape(self, shape):
-        if type(outshape) == type(1):
-            return (outshape, )
-        elif type(outshape) == type((1, 2)):
+        if type(shape) == type(1):
+            return (shape, )
+        elif type(shape) == type((1, 2)):
             return shape
         else:
             return None
@@ -92,6 +85,13 @@ class Layer(object):
         return self.__name
 
     '''
+    激活函数
+    '''
+    @property
+    def activation(self):
+        return self.__activation
+
+    '''
     初始参数
     '''
     def init_params(self):
@@ -104,35 +104,58 @@ class Layer(object):
     def params(self):
         raise Exception("the params method not implement!")
 
+    '''
+    上一个层属性
+    '''
+    @property
+    def prev(self):
+        return self.__prev
+
+    '''
+    当前层要根据上一个层outshape确定inshape
+    '''
+    def set_prev(self, prev_layer):
+        self.__prev = prev_layer
+        self.__id = prev_layer.layer_id + 1
+        self.__name = '/%d-%s'%(self.__id, self.tag)
+
+    '''
+    下一个层
+    '''
+    @property
+    def next(self):
+        return self.__next
+
+    '''
+    要确保当前层的outshape和下个层的的inshape具有相同的维度
+    当前层的set_prev会在set_next之前调用
+    '''
+    def set_next(self, next_layer):
+        #pdb.set_trace()
+        if len(next_layer.inshape) != len(self.outshape):
+            raise Exception("the layer %s outshape %s and the next layer %s inshape %s. Dimension not match"%(
+                            self.name, str(self.outshape),
+                            next_layer.name, str(next_layer.inshape)
+                            ))
+
+        self.__next = next_layer
+
+    '''
+    输入形状
+    无论什么时候都应返回一个tuple对象, 通过这个对象可以知道inshape的维度。
+    除第一个层外, 其他层的inshape对象在调用prev.setter之后才能确定。
+    '''
     @property
     def inshape(self):
         raise Exception("the inshape property not implement!")
 
+    '''
+    输出形状
+    调用next.setter时, 当前层应根据next_layer的inshape维度调整自己的的outshape
+    '''
     @property
     def outshape(self):
         raise Exception("the outshape property not implement!")
-
-    @property
-    def activation(self):
-        return self.__activation
-
-    '''
-    加入到模型中
-    pre_layer: 前一个层
-    '''
-    def join(self, pre_layer):
-        # self.inshape = pre_layer.outshape
-        # if inshape is not None:
-        #     self.inshape = inshape
-        #
-        # if self.__outshape == (-1,):
-        #     self.__outshape = self.__inshape
-
-        self.__id = pre_layer.layer_id + 1
-        self.__name = '/%d-%s'%(self.__id, self.tag)
-
-        if self.inshape is not None:
-            self.init_params()
 
     '''
     向前传播
@@ -208,17 +231,23 @@ class Model(object):
         self.__check()
         count = len(self.__layers)
 
-        #输入层必须要有输入形状
-        ly_0 = self.__layers[0]
-        if ly_0.inshape is None or len(ly_0.inshape) == 0:
-            raise Exception("input layer miss inshape")
+        #把层按顺序组装起来
+        pre_ly = None
+        for ly in self.__layers:
+            if pre_ly is None:
+                pre_ly = ly
+                continue
 
-        #把每一层的输入形状设置为上一层的输出形状,
-        #设置输入形状的同时, 要求该层自动初始化参数(如果有参数的话)
-        pre_ly = ly_0
-        for ly in self.__layers[1:]:
-            ly.join(pre_ly)
+            pre_ly.set_next(ly)
+            ly.set_prev(pre_ly)
+
+            #上一个层的前、后层已经已经确定, 初始化参数
+            pre_ly.init_params()
+
             pre_ly = ly
+
+        if pre_ly is not None:
+            pre_ly.init_params()
 
     '''
     打印模型信息摘要

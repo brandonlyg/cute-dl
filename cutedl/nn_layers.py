@@ -25,12 +25,13 @@ class Dense(Layer):
         self.__outshape = self.check_shape(outshape)
 
         #输入形状
-        self.__inshape = None
+        self.__inshape = (-1,)
         if inshape is not None:
+            #pdb.set_trace()
             if type(inshape) != type(1):
                 raise Exception("invalid inshape: "+str(inshape))
 
-            self.__in_shape = self.check_shape(inshape)
+            self.__inshape = self.check_shape(inshape)
 
         #print("Dense kargs:", kargs)
         #参数
@@ -39,8 +40,6 @@ class Dense(Layer):
 
         super().__init__(activation)
 
-        #输入数据的原始形状
-        self.__in_batch_shape = None
         #输入数据, 已经转换成合适的形状
         self.__in_batch = None
 
@@ -49,6 +48,7 @@ class Dense(Layer):
         #展平纬度, 初始化参数值
         std = 0.01
         shape = self.__inshape + self.__outshape
+        #pdb.set_trace()
         wval = np.random.randn(shape[0], shape[1]) * std
         bval = np.zeros(shape[1])
 
@@ -59,12 +59,10 @@ class Dense(Layer):
     def params(self):
         return [self.__W, self.__b]
 
-    def join(self, pre_layer):
-        #只取最后一个维度
-        inshape = pre_layer.outshape[-1]
-        self.__inshape = self.check_shape(inshape)
-
-        super().join(pre_layer)
+    def set_prev(self, prev_layer):
+        self.__inshape = self.check_shape(prev_layer.outshape)
+        #pdb.set_trace()
+        super().set_prev(prev_layer)
 
     @property
     def inshape(self):
@@ -77,19 +75,10 @@ class Dense(Layer):
     def forward(self, in_batch, training=False):
         W = self.__W.value
         b = self.__b.value
-        self.__in_batch_shape = in_batch.shape
 
-        in_x = in_batch
-        if len(in_batch.shape) > 2:
-            #超过两个维度把数据转换成(m*k,n), 只取[m*(k-1):, :]
-            m = in_batch.shape[0]
-            n = in_batch.shape[-1]
-            k = utils.flat_shape(in_batch.shape)//(m*n)
-            in_x = in_batch.reshape((m*k, n))[m*(k-1):, :]
+        out = in_batch @ W + b
 
-        self.__in_batch = in_x
-
-        out = in_x @ W + b
+        self.__in_batch = in_batch
 
         return self.activation(out)
 
@@ -112,20 +101,10 @@ class Dense(Layer):
         #数据梯度 (m,inshape) = (m,outshape) @ (outshape, inshape)
         out_grad = grad @ W.T
 
-        if len(self.__in_batch_shape) > 2:
-            #还原成输入数据的形状
-            m = self.__in_batch_shape[0]
-            n = self.__in_batch_shape[1]
-            k = utils.flat_shape(self.__in_batch_shape)//(m*n)
-            tmp = np.zeros(self.__in_batch_shape).reshape(m*k, n)
-            tmp[m*(k-1):, :] = out_grad
-            out_grad = tmp.reshape(self.__in_batch_shape)
-
         return out_grad
 
     #重置当前层的状态
     def reset(self):
-        self.__in_batch_shape = None
         self.__in_batch = None
 
         self.__W = LayerParam.reset(self.__W)
@@ -142,12 +121,10 @@ class Dropout(Layer):
     '''
     keep_prob: 保留概率取值区间为(0, 1]
     '''
-    def __init__(self, *outshape, **kargs):
-        self.__keep_prob = 1
-        if 'keep_prob' in kargs:
-            self.__keep_prob = kargs['keep_prob']
+    def __init__(self, keep_prob):
+        self.__keep_prob = keep_prob
 
-        super().__init__(-1, **kargs)
+        super().__init__()
         #pdb.set_trace()
         self.__mark = None
 
@@ -157,6 +134,14 @@ class Dropout(Layer):
     @property
     def params(self):
         return []
+
+    @property
+    def inshape(self):
+        return self.prev.outshape
+
+    @property
+    def outshape(self):
+        return self.inshape
 
     def forward(self, in_batch, training=False):
         kp = self.__keep_prob

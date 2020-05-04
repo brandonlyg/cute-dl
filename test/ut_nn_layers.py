@@ -21,8 +21,15 @@ class TestNNLayer(TestCase):
         cls.ly_dropout = nn.Dropout(keep_prob=0.5)
         cls.ly_dense1 = nn.Dense(6)
 
-        cls.ly_dropout.join(cls.ly_dense)
-        cls.ly_dense1.join(cls.ly_dropout)
+        cls.ly_dropout.set_prev(cls.ly_dense)
+        cls.ly_dense1.set_prev(cls.ly_dropout)
+
+        cls.ly_dense.set_next(cls.ly_dropout)
+        cls.ly_dropout.set_next(cls.ly_dense1)
+
+        cls.ly_dense.init_params()
+        cls.ly_dropout.init_params()
+        cls.ly_dense1.init_params()
 
     '''
     测试Dense层

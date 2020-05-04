@@ -53,8 +53,11 @@ def Conv2D(Layer):
         self.__b = None #(c_)
 
         #输入输出形状
-        self.__inshape = None
+        self.__inshape = (-1, -1, -1)
         self.__outshape = None
+
+        #真实输出形状
+        self.__real_outshape = None
 
         #输出形状
         outshape = self.check_shape(channels)
@@ -117,7 +120,7 @@ def Conv2D(Layer):
 
     def init_params(self):
         inshape = self.inshape
-        outshape = self.outshape
+        outshape = self.__real_outshape
         in_chnls = inshape[0]
         out_chnls = outshape[0]
         k = self.__ks
@@ -134,12 +137,24 @@ def Conv2D(Layer):
         self.__W = W
         self.__b = b
 
-    def join(self, pre_layer):
-        inshape = pre_layer.outshape
+    def set_prev(self, prev_layer):
+        inshape = prev_layer.outshape
         self.__outshape = self.__compute_outshape(inshape)
+        self.__real_outshape = self.__outshape
         self.__inshape = inshape
 
-        super().join(pre_layer)
+        super().set_prev(pre_layer)
+
+    def set_next(self, next_layer):
+        if len(next_layer.inshape) < len(self.outshape):
+            #适应下一层的输入要求
+            l = len(next_layer.inshape)
+            outshape = list(self.outshape[0:l])
+            tmp = self.outshape[l-1:]
+            outshape[-1] = utils.flat_shape(tmp)
+            self.__outshape = tuple(outshape)
+
+        super().set_next(next_layer)
 
     '''
     把特征图转换成方便卷积运算矩阵
@@ -151,7 +166,7 @@ def Conv2D(Layer):
         padded = np.zeros((m, c, h + 2*ph, w + 2*pw))
         padded[:, :, ph:(ph+h), pw:(pw+w)] = in
 
-        c_, h_, w_ = self.__outshape
+        c_, h_, w_ = self.__real_outshape
         kh,kw = self.__ks
         #转换成矩阵(m, h_, w_, c*kh*kw)
         out = np.zeros((m, h_, w_, c*kh*kw))
@@ -172,7 +187,7 @@ def Conv2D(Layer):
     把卷积矩阵还原成特征图
     '''
     def __mat2img(self, mat):
-        c_, h_, w_ = self.__outshape
+        c_, h_, w_ = self.__real_outshape
         m, c, h, w = self.__in_batch_shape
         kh, kw = self.ks
         ph, pw = self.__pad
@@ -210,10 +225,16 @@ def Conv2D(Layer):
 
         self.__in_batch = in_batch
 
+        if self.__outshape != self.__real_outshape:
+            out = out.reshape(self.__outshape)
+
         return self.activation(out)
 
     #反向传播梯度
     def backward(self, gradient):
+        if self.__outshape != self.__real_outshape:
+            gradient = gradient.reshape(self.__real_outshape)
+
         W = self.__W.value
 
         #(m, c_, h_, w_)
