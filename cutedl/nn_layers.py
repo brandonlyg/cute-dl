@@ -25,7 +25,7 @@ class Dense(Layer):
         self.__outshape = self.check_shape(outshape)
 
         #输入形状
-        self.__inshape = (-1,)
+        self.__inshape = None
         if inshape is not None:
             #pdb.set_trace()
             if type(inshape) != type(1):
@@ -111,7 +111,6 @@ class Dense(Layer):
         self.__b = LayerParam.reset(self.__b)
 
 
-
 '''
 dropout层
 '''
@@ -171,6 +170,38 @@ class Dropout(Layer):
 
     def reset(self):
         self.__mark = None
+
+
+'''
+flatten 展平层
+'''
+class Flatten(Layer):
+
+    def __init__(self):
+        self.__inshape = None
+        self.__outshape = None
+
+        super().__init__()
+
+    def set_prev(self, prev_layer):
+        inshape = prev_layer.outshape
+        self.__inshape = inshape
+        self.__outshape = (utils.flat_shape(inshape), )
+
+    @property
+    def inshape(self):
+        return self.__inshape
+
+    @property
+    def outshape(self):
+        return self.__outshape
+
+    def forward(self, in_batch, training=False):
+        return in_batch.reshape(self.__outshape)
+
+    def backward(self, gradient):
+        return gradient.reshape(self.__inshape)
+
 
 #
 # '''

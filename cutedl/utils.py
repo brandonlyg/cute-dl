@@ -30,7 +30,7 @@ def flat_shape(*shape):
         else:
             res *= item
 
-    return res
+    return int(res)
 
 '''
 对数据进行缩小到[-1, -1]区间内

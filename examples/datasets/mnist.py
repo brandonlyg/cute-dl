@@ -87,7 +87,7 @@ class Mnist(object):
             d = f.read(size)
             arr = struct.unpack('%dB'%len(d), d)
 
-            res = np.array(arr).reshape(m, h, w)
+            res = np.array(arr).reshape(m, 1, h, w)
             return res
 
     '''

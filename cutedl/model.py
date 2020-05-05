@@ -73,6 +73,25 @@ class Layer(object):
         else:
             return None
 
+    '''
+    是否有效的形状
+    '''
+    def valid_shape(self, shape):
+        if type((1,2)) != type(shape):
+            return False
+
+        res = True
+        for elem in shape:
+            if type(elem) != type(1):
+                res = False
+                break
+
+            if elem <= 0:
+                res = False
+                break
+
+        return res
+
     @property
     def layer_id(self):
         return self.__id
@@ -95,14 +114,14 @@ class Layer(object):
     初始参数
     '''
     def init_params(self):
-         raise Exception("the init_params method not implement!")
+         pass
 
     '''
     返回参数列表: [LayerParam,...]
     '''
     @property
     def params(self):
-        raise Exception("the params method not implement!")
+        return []
 
     '''
     上一个层属性
@@ -118,27 +137,6 @@ class Layer(object):
         self.__prev = prev_layer
         self.__id = prev_layer.layer_id + 1
         self.__name = '/%d-%s'%(self.__id, self.tag)
-
-    '''
-    下一个层
-    '''
-    @property
-    def next(self):
-        return self.__next
-
-    '''
-    要确保当前层的outshape和下个层的的inshape具有相同的维度
-    当前层的set_prev会在set_next之前调用
-    '''
-    def set_next(self, next_layer):
-        #pdb.set_trace()
-        if len(next_layer.inshape) != len(self.outshape):
-            raise Exception("the layer %s outshape %s and the next layer %s inshape %s. Dimension not match"%(
-                            self.name, str(self.outshape),
-                            next_layer.name, str(next_layer.inshape)
-                            ))
-
-        self.__next = next_layer
 
     '''
     输入形状
@@ -234,20 +232,11 @@ class Model(object):
         #把层按顺序组装起来
         pre_ly = None
         for ly in self.__layers:
-            if pre_ly is None:
-                pre_ly = ly
-                continue
+            if pre_ly is not None:
+                ly.set_prev(pre_ly)
 
-            pre_ly.set_next(ly)
-            ly.set_prev(pre_ly)
-
-            #上一个层的前、后层已经已经确定, 初始化参数
-            pre_ly.init_params()
-
+            ly.init_params()
             pre_ly = ly
-
-        if pre_ly is not None:
-            pre_ly.init_params()
 
     '''
     打印模型信息摘要
