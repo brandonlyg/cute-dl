@@ -197,10 +197,10 @@ class Flatten(Layer):
         return self.__outshape
 
     def forward(self, in_batch, training=False):
-        return in_batch.reshape(self.__outshape)
+        return in_batch.reshape((-1,)+self.__outshape)
 
     def backward(self, gradient):
-        return gradient.reshape(self.__inshape)
+        return gradient.reshape((-1,)+self.__inshape)
 
 
 #

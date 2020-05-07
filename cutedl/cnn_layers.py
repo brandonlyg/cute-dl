@@ -13,6 +13,8 @@ import utils
 计算2D卷积层的输输出和填充
 '''
 def compute_2D_outshape(inshape, kernel_size, strides, padding):
+    #pdb.set_trace()
+    _, h, w = inshape
     kh, kw = kernel_size
     sh, sw = strides
 
@@ -21,11 +23,10 @@ def compute_2D_outshape(inshape, kernel_size, strides, padding):
     pad = (0, 0)
     if 'same' == padding:
         _, h_, w_ = inshape
-        pad = ((h_*sh - h + kh - 1)//2, (w_*sw - w + kw - 1)//2)
+        pad = (((h_-1)*sh - h + kh )//2, ((w_-1)*sw - w + kw)//2)
     elif 'valid' == padding:
-        _, h, w = inshape
-        h_ = (h - kh + 1)//sh
-        w_ = (w - kw + 1)//sw
+        h_ = (h - kh)//sh + 1
+        w_ = (w - kw)//sw + 1
     else:
         raise Exception("invalid padding: "+padding)
 
@@ -34,33 +35,38 @@ def compute_2D_outshape(inshape, kernel_size, strides, padding):
     return outshape, pad
 
 '''
-把2D特征图转换成方便卷积运算的矩阵
+把2D特征图转换成方便卷积运算的矩阵, 形状(m*h_*w_, c*kh*kw)
+img 特征图 shape=(m,c,h,w)
+kernel_size 核形状 shape=(kh, kw)
+pad 填充大小 shape=(ph, pw)
+strides 步长 shape=(sh, sw)
 '''
 def img2D_mat(img, kernel_size, pad, strides):
+    #pdb.set_trace()
     kh, kw = kernel_size
     ph, pw = pad
     sh, sw = strides
     #pdb.set_trace()
     m, c, h, w = img.shape
-    kh,kw = self.__ks
+    kh, kw = kernel_size
 
-    #先填充
-    padded = np.zeros((m, c, h + 2*ph, w + 2*pw))
+    #得到填充的图
+    pdshape = (m, c) + (h + 2*ph, w + 2*pw)
+    #得到输出大小
+    h_ = (pdshape[2] - kh)//sh + 1
+    w_ = (pdshape[3] - kw)//sw + 1
+    #填充
+    padded = np.zeros(pdshape)
     padded[:, :, ph:(ph+h), pw:(pw+w)] = img
 
-    h_ = (padded.shape[2] - kh + 1)//sh
-    w_ = (padded.shape[3] - kw + 1)//sw
-
-    #转换成矩阵(m, h_, w_, c*kh*kw)
+    #转换成卷积矩阵(m, h_, w_, c, kh, kw)
     #pdb.set_trace()
-    out = np.zeros((m, h_, w_, c*kh*kw))
+    out = np.zeros((m, h_, w_, c, kh, kw))
     for i in range(h_):
         for j in range(w_):
             #(m, c, kh, kw)
             cov = padded[:, :, i*sh:i*sh+kh, j*sw:j*sw+kw]
-            #(m, c*kh*kw)
-            cov = cov.reshape((m, c*kh*kw))
-            out[:, i, j, :] = cov
+            out[:, i, j] = cov
 
     #转换成(m*h_*w_, c*kh*kw)
     out = out.reshape((-1, c*kh*kw))
@@ -68,28 +74,36 @@ def img2D_mat(img, kernel_size, pad, strides):
     return out
 
 '''
-卷积运算矩阵转换成2D特征图
+矩阵形状的梯度转换成2D特征图梯度
+mat 矩阵梯度 shape=(m*h_*w_, c*kh*kw)
+特征图形状 imgshape=(m, c, h, w)
 '''
-def mat_img2D(mat, imgshape, kernel_size, pad, strides):
+def matgrad_img2D(mat, imgshape, kernel_size, pad, strides):
+    #pdb.set_trace()
     m, c, h, w = imgshape
     kh, kw = kernel_size
     sh, sw = strides
     ph, pw = pad
 
-    padded = np.zeros((m, c, h + 2*ph, w + 2*pw))
-    h_ = (padded[2] - kh + 1)//sh
-    w_ = (padded[3] - kw + 1)//sw
+    #得到填充形状
+    pdshape = (m, c) + (h + 2*ph, w + 2 * pw)
+    #得到输出大小
+    h_ = (pdshape[2] - kh)//sh + 1
+    w_ = (pdshape[3] - kw)//sw + 1
 
-    #转换(m*h_*w_, c*kh*kw)->(m, h_, w_, c*kh*kw)
-    mat = mat.reshape(m, h_, w_, c*kh*kw)
+    #转换(m*h_*w_, c*kh*kw)->(m, h_, w_, c, kh, kw)
+    mat = mat.reshape(m, h_, w_, c, kh, kw)
+
     #还原成填充后的特征图
+    padded = np.zeros(pdshape)
     for i in range(h_):
         for j in range(w_):
-            padded[:, :, i*sh:i*sh+kh, j*sw:j*sw+kw] += mat[:, i, j, :].reshape(m, c, kh, kw)
+            #(m, c, kh, kw)
+            padded[:, :, i*sh:i*sh+kh, j*sw:j*sw+kw] += mat[:, i, j]
 
     #pdb.set_trace()
     #得到原图(m,c,h,w)
-    out = padded[:, :, ph:h+ph, pw:w+pw]
+    out = padded[:, :, ph:ph+h, pw:pw+w]
 
     return out
 
@@ -108,12 +122,12 @@ s 卷积运算步长 (sh, sw)
 ph 高度填充
 pw 宽度填充
 
-h_ = (h + 2*ph - kh + 1)/sh
-w_ = (w + 2*pw - kw + 1)/sw
+h_ = (h + 2*ph - kh)//sh + 1
+w_ = (w + 2*pw - kw)//sw + 1
 不填充 ph=pw=0
 填充到原来的大小: h_=h w_=w
-ph = (sh*h - h + kh -1)/2, 当sh=1时 ph = (kh-1)/2  k是奇数
-pw = (sw*w - w + kw -1)/2, 当sw=1时 pw = (kw-1)/2  k是奇数
+ph = (sh*(h-1) - h + kh)/2, 当sh=1时 ph = (kh-sh)/2
+pw = (sw*(w-1) - w + kw)/2, 当sw=1时 pw = (kw-sh)/2
 '''
 class Conv2D(Layer):
     tag='Conv2D'
@@ -163,7 +177,7 @@ class Conv2D(Layer):
             if self.__inshape is None or len(self.__inshape) != 3:
                 raise Exception("invalid inshape: "+str(inshape))
 
-            outshape, self.__pd = compute_2D_outshape(self.__inshape, self.__ks, self.__st, self.__padding)
+            outshape, self.__pad = compute_2D_outshape(self.__inshape, self.__ks, self.__st, self.__padding)
             self.__outshape = self.__outshape + outshape
 
         super().__init__(activation)
@@ -191,7 +205,7 @@ class Conv2D(Layer):
 
         #pdb.set_trace()
         #展平形状(c*kh*kw, c_), 把卷积运算转换成矩阵运算, 优化性能
-        shape = (in_chnls * utils.flat_shape(k), out_chnls)
+        shape = (in_chnls * utils.flat_shape(self.__ks), out_chnls)
         std = 0.01
         wval = np.random.randn(shape[0], shape[1]) * std
         bval = np.zeros(shape[1])
@@ -203,9 +217,10 @@ class Conv2D(Layer):
         self.__b = b
 
     def set_prev(self, prev_layer):
+        #pdb.set_trace()
         inshape = prev_layer.outshape
         self.__inshape = inshape
-        outshape, self.__pd = compute_2D_outshape(inshape, self.__ks, self.__st, self.__padding)
+        outshape, self.__pad = compute_2D_outshape(inshape, self.__ks, self.__st, self.__padding)
         self.__outshape = self.__outshape + outshape
 
         super().set_prev(prev_layer)
@@ -242,7 +257,7 @@ class Conv2D(Layer):
 
         #(m, c_, h_, w_)
         grad = self.activation.grad(gradient)
-        #把形状转换成(m, h_, w_, c_)
+        #把形状转换成(m, c_, h_, w_) -> (m, h_, w_, c_)
         grad = np.moveaxis(grad, 1, -1)
         #把形状转换成(m*h_*w_, c_)
         m, h_, w_, c_ = grad.shape
@@ -260,7 +275,7 @@ class Conv2D(Layer):
         dIn = grad @ W.T
 
         #把梯度矩阵转换成输入特征图的形状(m,c,h,w)
-        dIn = mat_img2D(dIn, self.__in_batch_shape, self.__ks, self.__pad, self.__strides)
+        dIn = matgrad_img2D(dIn, self.__in_batch_shape, self.__ks, self.__pad, self.__st)
 
         return dIn
 
@@ -278,11 +293,11 @@ class Conv2D(Layer):
 '''
 class MaxPool2D(Layer):
 
-    def __init__(self, pool_size=(2,2), strides=(1,1), padding='valid'):
+    def __init__(self, pool_size=(2,2), strides=(2,2), padding='valid'):
         self.__ks = pool_size
         self.__st = strides
         self.__padding = padding
-        self.__pad = None
+        self.__pad = (0,0)
 
         self.__inshape = (-1,-1,-1)
         self.__outshape = (-1,-1,-1)
@@ -308,6 +323,7 @@ class MaxPool2D(Layer):
         return self.__outshape
 
     def set_prev(self, prev_layer):
+        #pdb.set_trace()
         inshape = prev_layer.outshape
         self.__inshape = inshape
         outshape, self.__pad = compute_2D_outshape(inshape, self.__ks, self.__st, self.__padding)
@@ -320,33 +336,37 @@ class MaxPool2D(Layer):
         _, h_, w_ = self.outshape
         kh, kw = self.__ks
         #把特征图转换成矩阵(m, c, h, w)->(m*h_*w_, c*kh*kw)
-        in_batch = img2D_mat(in_batch, self.outshape, self.__ks, self.__pd, self.__st)
-        #转换形状(m*w_*h_, c*kh*kw)->(m*h_*w_, c, kh*kw)
-        in_batch = in_batch.reshape((m*h_*w_, c, kh*kw))
-        #得到最大值(m*h_*w_, c, 1)
-        max = np.max(in_batch, axis=2).reshape(m*h_*w_, c, 1)
-        #得到最大值的索引(m*h_*w_,c, kh*kw)
-        self.__mark = in_batch == max
+        in_batch = img2D_mat(in_batch, self.__ks, self.__pad, self.__st)
+        #转换形状(m*w_*h_, c*kh*kw)->(m*h_*w_*c,kh*kw)
+        in_batch = in_batch.reshape((m*h_*w_*c, kh*kw))
+        #得到最大最索引
+        idx = in_batch.argmax(axis=1).reshape(-1, 1)
+        #转成in_batch相同的形状
+        idx = idx @ np.ones((1, in_batch.shape[1]))
+        temp = np.ones((in_batch.shape[0], 1)) @ np.arange(in_batch.shape[1]).reshape(1, -1)
+        #得到boolean的标记
+        self.__mark = idx == temp
 
-        #得到输出值
-        out = out.reshape(m, h_, w_, c)
-        out = np.moveaxis(out, -1, 1)
+        #得到最大值
+        max = in_batch[self.__mark]
+        max = max.reshape((m, h_, w_, c))
+        max = np.moveaxis(max, -1, 1)
 
-        return out
+        return max
 
     def backward(self, gradient):
         c, h_, w_ = self.outshape
         m = gradient.shape[0]
         kh, kw = self.__ks
         #(m, c, h_, w_) -> (m, h_, w_, c)
-        grad = gradient.moveaxis(1, -1)
-        #(m, h_, w_, c) -> (m*h_*w_, c)
-        grad = grad.reshape((m*h_*w_, c))
-        #还原矩阵(m*h_*w_, c, kh*kw) -> (m*h_*w_, c*kh*kw)
-        mat = np.zeros((m*h_*w_, c, kh*kw))
+        grad = np.moveaxis(gradient, 1, -1)
+        #(m*h_*w_*c, kh*kw)
+        mat = np.zeros((m*h_*w_*c, kh*kw))
         mat[self.__mark] = grad.reshape(-1)
+        mat = mat.reshape((m*h_*w_, c*kh*kw))
+        #pdb.set_trace()
         #把矩阵还原成特征图
-        out = mat_img2D(mat, self.inshape, self.__ks, self.__pd, self.__st)
+        out = matgrad_img2D(mat, (m,)+self.inshape, self.__ks, self.__pad, self.__st)
 
         return out
 

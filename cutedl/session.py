@@ -77,16 +77,15 @@ class Session(object):
     自动分批训练拟合模型
     data  训练数据集 Dataset对象
     epochs 训练轮数
-    kargs
-        val_data 验证数据集 Dataset对象
-        val_epochs 每val_epochs步使用val_data进行一次验证, 同时记录记录当前训练的损失值.
-        val_steps 和val_epochs的作用一样, 如果>0优先使用这个设置.
-        listeners 训练事件监听器. FitLisener类型.
-                  训练过程产生的事件有:
-                  epoch_start  每轮训练开始触发
-                  epoch_end    每轮训练结束触发
-                  val_start    每次验证开始触发
-                  val_end      每次验证结束触发
+    val_data 验证数据集 Dataset对象
+    val_epochs 每val_epochs步使用val_data进行一次验证, 同时记录记录当前训练的损失值.
+    val_steps 和val_epochs的作用一样, 如果>0优先使用这个设置.
+    listeners 训练事件监听器. FitLisener类型.
+              训练过程产生的事件有:
+              epoch_start  每轮训练开始触发
+              epoch_end    每轮训练结束触发
+              val_start    每次验证开始触发
+              val_end      每次验证结束触发
 
     return 训练历史记录history
         history格式:
@@ -98,7 +97,7 @@ class Session(object):
             'cost_time': float
         }
     '''
-    def fit(self, data, epochs, **kargs):
+    def fit(self, data, epochs, val_data=None, val_epochs=1, val_steps=0, listeners=[]):
         history = {
             'loss': [],
             'val_loss': [],
@@ -108,16 +107,16 @@ class Session(object):
         }
         self.__fit_switch = True
 
-        val_data = kargs.get('val_data')
-        val_epochs = kargs.get('val_epochs', 1)
-        val_steps = kargs.get('val_steps', 0)
-        listeners = kargs.get('listeners', [])
-
         if val_data is None:
             history['val_loss'] = None
 
         if val_epochs <= 0 or val_epochs >= epochs:
             val_epochs = 1
+
+        if val_steps <= 0:
+            val_steps = val_epochs * data.batch_count
+
+        print("val_steps: ", val_steps)
 
         #事件派发
         def event_dispatch(event):
@@ -173,10 +172,6 @@ class Session(object):
                 print("%s %s"%(str_epochs, txt))
 
 
-        ##
-        if val_steps <= 0:
-            val_steps = val_epochs * data.batch_count
-
         #开始训练
         step = 0
         history['cost_time'] = time.time()
@@ -185,6 +180,7 @@ class Session(object):
                 break
 
             event_dispatch("epoch_start")
+            data.shuffle()
             for batch_x, batch_y in data.as_iterator():
                 if not self.__fit_switch:
                     break
