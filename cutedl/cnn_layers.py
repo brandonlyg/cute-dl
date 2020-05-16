@@ -22,9 +22,11 @@ def compute_2D_outshape(inshape, kernel_size, strides, padding):
     w_ = -1
     pad = (0, 0)
     if 'same' == padding:
+        #填充, 使用输入输出形状一致
         _, h_, w_ = inshape
         pad = (((h_-1)*sh - h + kh )//2, ((w_-1)*sw - w + kw)//2)
     elif 'valid' == padding:
+        #不填充
         h_ = (h - kh)//sh + 1
         w_ = (w - kw)//sw + 1
     else:
@@ -141,14 +143,20 @@ class Conv2D(Layer):
             c 输入通道数
             h 特征图高度
             w 特征图宽度
+    kernel_initialier 卷积核初始化器
+            uniform 均匀分布
+            normal  正态分布
+    bias_initialier 偏移量初始化器
+            uniform 均匀分布
+            normal 正态分布
+            zeros  0
     '''
-    def __init__(self,
-                channels,
-                kernel_size,
-                strides=(1,1),
+    def __init__(self, channels, kernel_size, strides=(1,1),
                 padding='same',
                 inshape=None,
-                activation='relu'):
+                activation='relu',
+                kernel_initializer='uniform',
+                bias_initializer='zeros'):
         #pdb.set_trace()
         self.__ks = kernel_size
         self.__st = strides
@@ -156,8 +164,8 @@ class Conv2D(Layer):
         self.__padding = padding
 
         #参数
-        self.__W = None #(c*kernel_size, c_)
-        self.__b = None #(c_)
+        self.__W = self.weight_initializers[kernel_initializer]
+        self.__b = self.bias_initializers[bias_initializer]
 
         #输入输出形状
         self.__inshape = (-1, -1, -1)
@@ -206,9 +214,8 @@ class Conv2D(Layer):
         #pdb.set_trace()
         #展平形状(c*kh*kw, c_), 把卷积运算转换成矩阵运算, 优化性能
         shape = (in_chnls * utils.flat_shape(self.__ks), out_chnls)
-        std = 0.01
-        wval = np.random.randn(shape[0], shape[1]) * std
-        bval = np.zeros(shape[1])
+        wval = self.__W(shape)
+        bval = self.__b((shape[1], ))
 
         W = LayerParam(self.name, 'weight', wval)
         b = LayerParam(self.name, 'bias', bval)

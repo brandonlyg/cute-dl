@@ -17,7 +17,8 @@ import dlmath
 class Dense(Layer):
     tag='Dense'
 
-    def __init__(self, outshape, inshape=None, activation='relu'):
+    def __init__(self, outshape, inshape=None, activation='relu',
+                weight_initializer='uniform', bias_initializer='zeros'):
         #输出形状(int,)
         if type(outshape) != type(1):
             raise Exception("invalid outshape: "+str(outshape))
@@ -35,8 +36,8 @@ class Dense(Layer):
 
         #print("Dense kargs:", kargs)
         #参数
-        self.__W = None
-        self.__b = None
+        self.__W = self.weight_initializers[weight_initializer]
+        self.__b = self.bias_initializers[bias_initializer]
 
         super().__init__(activation)
 
@@ -46,11 +47,10 @@ class Dense(Layer):
     def init_params(self):
 
         #展平纬度, 初始化参数值
-        std = 0.01
         shape = self.__inshape + self.__outshape
         #pdb.set_trace()
-        wval = np.random.randn(shape[0], shape[1]) * std
-        bval = np.zeros(shape[1])
+        wval = self.__W(shape)
+        bval = self.__b((shape[1],))
 
         self.__W = LayerParam(self.name, 'weight', wval)
         self.__b = LayerParam(self.name, 'bias', bval)

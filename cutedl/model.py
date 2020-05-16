@@ -5,8 +5,8 @@ import pdb
 import pickle
 import numpy as np
 
+import utils
 import activations
-import reguls
 
 '''
 层参数类型
@@ -91,6 +91,30 @@ class Layer(object):
                 break
 
         return res
+
+    '''
+    权重初始化器
+    uniform 均匀分布
+    normal  正态分布
+    '''
+    @property
+    def weight_initializers(self):
+        initializers = {}
+        initializers['uniform'] = lambda shape: np.random.uniform(-1, 1, shape)*0.1
+        initializers['normal'] = lambda shape: np.random.randn(utils.flat_shape(shape)).reshape(shape)*0.1
+        return initializers
+
+    '''
+    偏移量初始化器
+    uniform 均匀分布
+    normal 正态分布
+    zeros  0
+    '''
+    @property
+    def bias_initializers(self):
+        initializers = self.weight_initializers
+        initializers['zeros'] = lambda shape: np.zeros(shape)
+        return initializers
 
     @property
     def layer_id(self):

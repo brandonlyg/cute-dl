@@ -7,7 +7,6 @@ import time
 import numpy as np
 
 from model import Model
-import reguls
 
 '''
 会话类型
@@ -107,6 +106,8 @@ class Session(object):
         }
         self.__fit_switch = True
 
+        start_time = time.time()
+
         if val_data is None:
             history['val_loss'] = None
 
@@ -149,6 +150,7 @@ class Session(object):
         def record(loss, val_loss, val_pred, step):
             history['loss'].append(loss)
             history['steps'].append(step)
+            history['cost_time'] = time.time() - start_time
 
             if history['val_loss'] is not None and val_loss is not None :
                 history['val_loss'].append(val_loss)
@@ -174,7 +176,6 @@ class Session(object):
 
         #开始训练
         step = 0
-        history['cost_time'] = time.time()
         for epoch in range(epochs):
             if not self.__fit_switch:
                 break
@@ -200,7 +201,7 @@ class Session(object):
 
             event_dispatch("epoch_end")
 
-        history['cost_time'] = time.time() - history['cost_time']
+        history['cost_time'] = time.time() - start_time
 
         return history
 
