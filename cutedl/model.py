@@ -47,20 +47,33 @@ class Layer(object):
     '''
     activation: 激活函数的名字
     '''
-    def __init__(self, activation='linear'):
+    def __init__(self, activation='linear', parent_layer=None, layer_id=0):
 
         #得到激活函数
         self.__activation = activations.get(activation)
 
+        #父层
+        self.__parent = parent_layer
+
         #层在模型中的id, 是层在模型中的索引
-        self.__id = 0
+        self.__id = layer_id
         #层的名字
-        self.__name = '/%d-%s'%(self.__id, self.tag)
+        self.__name = ''
 
         #上一个层
         self.__prev = None
-        #下一个层
-        self.__next = None
+
+        #生成层名称
+        self.__gen_layer_name()
+
+
+    '''
+    生成层名称
+    '''
+    def __gen_layer_name(self):
+        self.__name = '/%d-%s'%(self.__id, self.tag)
+        if self.__parent is not None:
+            self.__name = self.__parent.name + self.__name
 
     '''
     检查形状
@@ -160,7 +173,8 @@ class Layer(object):
     def set_prev(self, prev_layer):
         self.__prev = prev_layer
         self.__id = prev_layer.layer_id + 1
-        self.__name = '/%d-%s'%(self.__id, self.tag)
+
+        self.__gen_layer_name()
 
     '''
     输入形状

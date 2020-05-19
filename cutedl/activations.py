@@ -1,5 +1,7 @@
 # coding=utf-8
 
+import dlmath
+
 '''
 激活函数
 '''
@@ -52,9 +54,48 @@ class Relu(Activation):
         return gradient
 
 
+'''
+sigmoid 激活函数
+'''
+class Sigmoid(Activation):
+    name = 'sigmoid'
+
+    def __init__(self):
+        self.__grad = None
+
+    def __call__(self, in_batch):
+        out = dlmath.sigmoid(in_batch)
+        self.__grad = out*(1-out)
+        return out
+
+    def grad(self, gradient):
+        return gradient * self.__grad
+
+
+
+'''
+tanh 激活函数
+'''
+class Tanh(Activation):
+    name = 'tanh'
+
+    def __init__(self):
+        self.__grad = None
+
+    def __call__(self, in_batch):
+        out = dlmath.tanh(in_batch)
+        self.__grad = 1 - out**2
+        return out
+
+    def grad(self, gradient):
+        return gradient * self.__grad
+
+
 act_dict = {
     Linear.name: Linear,
-    Relu.name: Relu
+    Relu.name: Relu,
+    Sigmoid.name: Sigmoid,
+    Tanh.name, Tanh
 }
 
 #创建激活函数
