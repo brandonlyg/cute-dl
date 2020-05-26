@@ -24,7 +24,7 @@ class Embedding(Layer):
     def __init__(self, dims, vocabulary_size, need_train=True):
         #初始化嵌入向量
         initializer = self.weight_initializers['uniform']
-        self.__vecs = self.initializer((vocabulary_size, dims))
+        self.__vecs = initializer((vocabulary_size, dims))
 
         super().__init__()
 
@@ -33,7 +33,6 @@ class Embedding(Layer):
             self.__params = []
             self.__cur_params = None
             self.__in_batch = None
-            self.init_params()
 
     def init_params(self):
         if self.__params is None:
@@ -58,6 +57,10 @@ class Embedding(Layer):
     def outshape(self):
         return (-1, -1, self.__vecs.shape[-1])
 
+    @property
+    def vectors(self):
+        return self.__vecs
+
     '''
     in_batch shape=(m, T)
     return shape (m, T, dims)
@@ -67,11 +70,11 @@ class Embedding(Layer):
         outshape = (m, T, self.outshape[-1])
         out = np.zeros(outshape)
 
-        for i in range(m)
+        for i in range(m):
             out[i] = self.__vecs[in_batch[i]]
 
         if training and self.__params is not None:
-            self.__in_bath == in_batch
+            self.__in_batch = in_batch
 
         return out
 
@@ -79,6 +82,8 @@ class Embedding(Layer):
         if self.__params is None:
             return
 
+        #pdb.set_trace()
+        in_batch = self.__in_batch
         params = {}
         m, T, _ = gradient.shape
         for i in range(m):
@@ -88,16 +93,22 @@ class Embedding(Layer):
                 if idx not in params:
                     params[idx] = self.__params[idx]
                 p = params[idx]
-                if p.graditent is None:
+                if p.gradient is None:
                     p.gradient = grad
                 else:
                     p.gradient += grad
 
         self.__cur_params = list(params.values())
+        #print("params keys: ", list(params.keys()))
 
     def reset(self):
         self.__cur_params = None
-        self.__params = None
+
+        if self.__params is not None:
+            count = len(self.__params)
+            for i in range(count):
+                p = self.__params[i]
+                self.__params[i] = LayerParam.reset(p)
 
 
 '''
@@ -106,7 +117,7 @@ RNN 层定义
 class RNN(Layer):
     tag='RNN'
 
-    def __init__(self, out_units, in_units=None, activation='linear')
+    def __init__(self, out_units, in_units=None, activation='linear'):
         if type(out_units) != type(1):
             raise Exception("invalid out_units: "+str(out_units))
 
@@ -117,7 +128,6 @@ class RNN(Layer):
                 raise Exception("invalid in_units: "+str(in_units))
 
             self.__in_units = in_units
-            self.init_params()
 
         super().__init__(activation)
 
@@ -141,8 +151,6 @@ class RNN(Layer):
         outshape = prev_layer.outshape
         self.__in_units = outshape[-1]
         super().set_prev(prev_layer)
-
-        self.init_params()
 
     def hiden_forward(self, in_batch, pre_hs, training):
         raise Exception("hiden_forward not implement!")
@@ -176,7 +184,8 @@ class RNN(Layer):
 '''
 隐藏门单元
 '''
-class GateUnit:
+class GateUnit(Layer):
+    tag = 'RNN-GateUnit'
 
     '''
     输入输入
@@ -195,23 +204,25 @@ class GateUnit:
         self.__Wh = None
         self.__b = None
 
+        #pdb.set_trace()
         super().__init__(activation, parent_layer, layer_id)
 
         self.init_params()
 
-        self.__hs= None
+        self.__hs = None
         self.__in_batchs = None
 
 
     def init_params(self):
-        initializers = self.bias_initializers()
+        initializers = self.bias_initializers
 
         shape = self.__inshape + self.__outshape
         val = initializers['uniform'](shape)
         self.__W = LayerParam(self.name, 'weight', val)
 
+        shape = self.__outshape + self.__outshape
         val = initializers['uniform'](shape)
-        slef.__Wh = LayerParam(self.name, 'weight_hiden', val)
+        self.__Wh = LayerParam(self.name, 'weight_hiden', val)
 
         val = initializers['zeros']((shape[1],))
         self.__b = LayerParam(self.name, 'bias', val)
@@ -243,7 +254,7 @@ class GateUnit:
                 self.__hs = []
             if self.__in_batchs is None:
                 self.__in_batchs = []
-            self.__hstack.append(hs)
+            self.__hs.append(hs)
             self.__in_batchs.append(in_batch)
 
         return self.activation(out)
@@ -281,7 +292,7 @@ class GateUnit:
 '''
 乘法单元
 '''
-class MultiPyUnit:
+class MultiplyUnit:
 
     def __init__(self):
         pass
@@ -363,18 +374,26 @@ class GRU(RNN):
         #输出单元
         self.__u_out = None
 
-        super().__init__(out_units, in_units, activation)
+        super().__init__(out_units, in_units, activation=activation)
 
     def init_params(self):
         out_units = self.out_units
         in_units = self.in_units
 
+        #pdb.set_trace()
         self.__g_reset = GateUnit(out_units, in_units, parent_layer=self, layer_id=1)
         self.__g_update = GateUnit(out_units, in_units, parent_layer=self, layer_id=2)
         self.__g_cddout = GateUnit(out_units, in_units, parent_layer=self, layer_id=3)
 
         self.__u_gr = MultiplyUnit()
         self.__u_out = GRUOutUnit()
+
+    @property
+    def params(self):
+        res = self.__g_reset.params
+        res += self.__g_update.params
+        res += self.__g_cddout.params
+        return res
 
     def hiden_forward(self, in_batch, pre_hs, training):
         gr = self.__g_reset.forward(in_batch, pre_hs, training)

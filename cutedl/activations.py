@@ -95,7 +95,7 @@ act_dict = {
     Linear.name: Linear,
     Relu.name: Relu,
     Sigmoid.name: Sigmoid,
-    Tanh.name, Tanh
+    Tanh.name: Tanh
 }
 
 #创建激活函数

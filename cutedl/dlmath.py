@@ -30,7 +30,7 @@ def prob_distribution(x):
 categories 类别确信度 shape=(m, n)
 count 抽样数量
 '''
-def categories_sample(categories, count)
+def categories_sample(categories, count):
     #转换成分布列
     prob_d= prob_distribution(categories)
 
