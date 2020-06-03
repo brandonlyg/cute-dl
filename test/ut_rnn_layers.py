@@ -121,6 +121,56 @@ class TestGRU(TestCase):
         gru = self.gru
         display_params(gru.params)
 
+    def test_train(self):
+        print("test train")
+        gru = self.gru
+
+        in_batch = np.random.uniform(0, 1, (2,2,3)) * 0.1
+        out = gru.forward(in_batch, True)
+        self.assertEqual(out.shape, (2,2,4))
+        print("out: ", out)
+
+        grad = np.random.uniform(0, 1, (2,2,4))*0.1
+        grad_in_batch = gru.backward(grad)
+        self.assertEqual(grad_in_batch.shape, in_batch.shape)
+        print("grad_in_batch: ", grad_in_batch)
+
+        display_params(gru.params)
+
+'''
+测试LSTM
+'''
+class TestLSTM(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        print("start test LSTM ----------------")
+        cls.lstm = rnn.LSTM(4, 3)
+        cls.lstm.init_params()
+
+    def test_params(self):
+        print("test params")
+
+        lstm = self.lstm
+        display_params(lstm.params)
+
+    def test_train(self):
+        print("test train")
+        lstm = self.lstm
+
+        in_batch = np.random.uniform(0, 1, (2,2,3)) * 0.1
+        out = lstm.forward(in_batch, True)
+        self.assertEqual(out.shape, (2,2,4))
+        print("out: ", out)
+
+        grad = np.random.uniform(0, 1, (2,2,4))*0.1
+        grad_in_batch = lstm.backward(grad)
+        self.assertEqual(grad_in_batch.shape, in_batch.shape)
+        print("grad_in_batch: ", grad_in_batch)
+
+        display_params(lstm.params)
+
+
 
 if __name__ == '__main__':
     unittest.main()

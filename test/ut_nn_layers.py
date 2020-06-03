@@ -24,9 +24,6 @@ class TestNNLayer(TestCase):
         cls.ly_dropout.set_prev(cls.ly_dense)
         cls.ly_dense1.set_prev(cls.ly_dropout)
 
-        cls.ly_dense.set_next(cls.ly_dropout)
-        cls.ly_dropout.set_next(cls.ly_dense1)
-
         cls.ly_dense.init_params()
         cls.ly_dropout.init_params()
         cls.ly_dense1.init_params()
@@ -73,6 +70,23 @@ class TestNNLayer(TestCase):
         print("training=True dropout backward: ", bout)
 
         self.assertEqual(out.tolist(), bout.tolist())
+
+
+class TestFilter(TestCase):
+
+    def test_all(self):
+        print("test Filter all")
+
+        filter = nn.Filter()
+        in_batch = np.arange(3*3*4).reshape(3,3,4)
+        out = filter.forward(in_batch)
+        print("out: ", out)
+        self.assertEqual(out.tolist(), in_batch[:,-1,:].tolist())
+
+        grad = np.arange(3 * 4).reshape(3,4)
+        grad_out = filter.backward(grad)
+        print("grad_out: ", grad_out)
+        self.assertEqual(grad_out.shape, in_batch.shape)
 
 
 if __name__ == '__main__':

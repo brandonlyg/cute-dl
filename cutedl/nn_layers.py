@@ -203,6 +203,50 @@ class Flatten(Layer):
         return gradient.reshape((-1,)+self.__inshape)
 
 
+'''
+过滤层,
+把三个维度的张量过滤成两个维度的张量
+eg (m, k, n) --> (m, n)
+'''
+class Filter(Layer):
+
+    def __init__(self):
+        self.__inshape = None
+        self.__outshape = None
+
+        super().__init__()
+
+        self.__in_batch_shape = None
+
+    def set_prev(self, prev_layer):
+        inshape = (prev_layer.outshape[-1], )
+        self.__inshape = inshape
+        self.__outshape = inshape
+
+    @property
+    def inshape(self):
+        return self.__inshape
+
+    @property
+    def outshape(self):
+        return self.__outshape
+
+    def forward(self, in_batch, training=False):
+        self.__in_batch_shape = in_batch.shape
+
+        out = in_batch[:, -1, :]
+
+        return out
+
+    def backward(self, gradient):
+        out = np.zeros(self.__in_batch_shape)
+        out[:, -1, :] = gradient
+
+        return out
+
+    def reset(self):
+        self.__in_batch_shape = None
+
 #
 # '''
 # softmax层

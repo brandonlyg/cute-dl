@@ -20,11 +20,16 @@ class Embedding(Layer):
     dims 嵌入向量维度
     vocabulary_size 词汇表大小
     need_train 是否需要训练嵌入向量
+    padding 填充值, 指定词典中的填充值,
+            嵌入层会把索引为padding的嵌入向量初始化为0, 如果need_train=True, 该向量也不会参与训练
     '''
-    def __init__(self, dims, vocabulary_size, need_train=True):
+    def __init__(self, dims, vocabulary_size, need_train=True, padding=0):
         #初始化嵌入向量
         initializer = self.weight_initializers['uniform']
         self.__vecs = initializer((vocabulary_size, dims))
+        self.__vecs[padding] = np.zeros((dims,))
+
+        self.__padding = padding
 
         super().__init__()
 
@@ -90,6 +95,9 @@ class Embedding(Layer):
             for t in range(T):
                 grad = gradient[i, t]
                 idx = self.__in_batch[i, t]
+                if idx == self.__padding:
+                    continue
+
                 if idx not in params:
                     params[idx] = self.__params[idx]
                 p = params[idx]
@@ -109,7 +117,6 @@ class Embedding(Layer):
             for i in range(count):
                 p = self.__params[i]
                 self.__params[i] = LayerParam.reset(p)
-
 
 '''
 RNN 层定义
@@ -161,22 +168,25 @@ class RNN(Layer):
     def forward(self, in_batch, training):
         m, T, n = in_batch.shape
 
-        hstatus = np.zeros(in_batch.shape)
-        pre_hs = np.zeors((m, n))
+        out_units = self.__out_units
+        hstatus = np.zeros((m, T, out_units))
+        pre_hs = np.zeros((m, out_units))
         for t in range(T):
-            hstauts[:, t, :] = self.hiden_forward(in_batch[:,t,:], pre_hs, training)
-            pre_hs = hstauts[:, t, :]
+            hstatus[:, t, :] = self.hiden_forward(in_batch[:,t,:], pre_hs, training)
+            pre_hs = hstatus[:, t, :]
 
         return hstatus
 
     def backward(self, gradient):
         m, T, n = gradient.shape
 
-        grad_x = np.zeros(gradient.shape)
+        in_units = self.__in_units
+        grad_x = np.zeros((m, T, in_units))
         for t in range(T-1, -1, -1):
             grad_x[:,t,:], grad_hs = self.hiden_backward(gradient[:,t,:])
+            #pdb.set_trace()
             if t - 1 >= 0:
-                gradient[:,t-1,:] += grad_hs
+                gradient[:,t-1,:] = gradient[:,t-1,:] + grad_hs
 
         return grad_x
 
@@ -271,12 +281,25 @@ class GateUnit(Layer):
         in_batch = self.__in_batchs.pop()
 
         grad_in_batch = grad @ W.T
-        self.__W.gradient = in_batch.T @ grad
-
+        grad_W = in_batch.T @ grad
         grad_hs = grad @ Wh.T
-        self.__Wh.gradient = pre_hs.T @ grad
+        grad_Wh = pre_hs.T @ grad
+        grad_b = grad.sum(axis=0)
 
-        self.__b.gradient = grad.sum(axis=0)
+        if self.__W.gradient is None:
+            self.__W.gradient = grad_W
+        else:
+            self.__W.gradient = self.__W.gradient + grad_W
+
+        if self.__Wh.gradient is None:
+            self.__Wh.gradient = grad_Wh
+        else:
+            self.__Wh.gradient = self.__Wh.gradient +  grad_Wh
+
+        if self.__b.gradient is None:
+            self.__b.gradient = grad_b
+        else:
+            self.__b.gradient = self.__b.gradient + grad_b
 
         return grad_in_batch, grad_hs
 
@@ -295,7 +318,8 @@ class GateUnit(Layer):
 class MultiplyUnit:
 
     def __init__(self):
-        pass
+        self.__lefts = []
+        self.__rights = []
 
     def forward(self, left, right, training):
         out = left * right
@@ -312,7 +336,7 @@ class MultiplyUnit:
         grad_left = gradient * right
         grad_right = gradient * left
 
-        return grad_lef, grad_right
+        return grad_left, grad_right
 
     def reset(self):
         self.__lefts = []
@@ -323,7 +347,8 @@ GRU-RNN 层输出单元
 '''
 class GRUOutUnit:
 
-    def __int__(self):
+    def __init__(self):
+        #pdb.set_trace()
         self.__gus = []
         self.__pre_hs = []
         self.__cddouts = []
@@ -331,10 +356,12 @@ class GRUOutUnit:
     def forward(self, gu, pre_hs, cddout, training):
         out = gu * pre_hs + (1-gu) * cddout
 
+        #pdb.set_trace()
+        gus = self.__gus
         if training:
             self.__gus.append(gu)
             self.__pre_hs.append(pre_hs)
-            self.__cddouts.append(cddouts)
+            self.__cddouts.append(cddout)
 
         return out
 
@@ -390,6 +417,7 @@ class GRU(RNN):
 
     @property
     def params(self):
+        #pdb.set_trace()
         res = self.__g_reset.params
         res += self.__g_update.params
         res += self.__g_cddout.params
@@ -397,29 +425,32 @@ class GRU(RNN):
 
     def hiden_forward(self, in_batch, pre_hs, training):
         gr = self.__g_reset.forward(in_batch, pre_hs, training)
-        gu = self.__g_udate.forward(in_batch, pre_hs, training)
-        ugr = self.__u_gr.forward(gr, pre_hs)
-        cddo = self.__g_cddout.forward(inbatch, ugr)
+        gu = self.__g_update.forward(in_batch, pre_hs, training)
+        ugr = self.__u_gr.forward(gr, pre_hs, training)
+        cddo = self.__g_cddout.forward(in_batch, ugr, training)
 
-        hs = self.__u_out.forward(gu, pre_hs, cddo)
+        hs = self.__u_out.forward(gu, pre_hs, cddo, training)
 
         return hs
 
     def hiden_backward(self, gradient):
+
         grad_gu, grad_pre_hs, grad_cddo = self.__u_out.backward(gradient)
-        grad_in_batch, grad_ugr = self.__g_cddout.backward(grad_cddu)
+        #pdb.set_trace()
+        grad_in_batch, grad_ugr = self.__g_cddout.backward(grad_cddo)
 
         grad_gr, g_pre_hs = self.__u_gr.backward(grad_ugr)
         grad_pre_hs = grad_pre_hs + g_pre_hs
 
-        g_in_batch, g_pre_hs = self._g_update.backward(grad_gu)
+        g_in_batch, g_pre_hs = self.__g_update.backward(grad_gu)
         grad_in_batch = grad_in_batch + g_in_batch
         grad_pre_hs = grad_pre_hs + g_pre_hs
 
-        g_in_batch, g_pre_hs = self._g_reset.backward(grad_gr)
+        g_in_batch, g_pre_hs = self.__g_reset.backward(grad_gr)
         grad_in_batch = grad_in_batch + g_in_batch
         grad_pre_hs = grad_pre_hs + g_pre_hs
 
+        #pdb.set_trace()
         return grad_in_batch, grad_pre_hs
 
     def reset(self):
@@ -530,6 +561,19 @@ class LSTM(RNN):
     units 输出维度
     '''
     def __int__(self, out_units, in_units=None, activation='linear'):
+        #输入门
+        self.__g_in = None
+        #遗忘门
+        self.__g_forget = None
+        #输出门
+        self.__g_out = None
+        #记忆门
+        self.__g_memory = None
+        #记忆单元
+        self.__memory_unit = None
+        #输出单元
+        self.__out_unit
+
         super().__init__(out_units, in_units, activation)
 
     '''
@@ -543,7 +587,7 @@ class LSTM(RNN):
         self.__g_in = GateUnit(out_units, in_units, parent_layer=self, layer_id=1)
         #遗忘门
         self.__g_forget = GateUnit(out_units, in_units, parent_layer=self, layer_id=2)
-        #输入门
+        #输出门
         self.__g_out = GateUnit(out_units, in_units, parent_layer=self, layer_id=3)
         #记忆门
         self.__g_memory = GateUnit(out_units, in_units, activation='tanh', parent_layer=self, layer_id=4)
@@ -562,20 +606,20 @@ class LSTM(RNN):
         res += self.__g_memory.params
         return res
 
-
-
     def hiden_forward(self, in_batch, hs, training):
         g_in = self.__g_in.forward(in_batch, hs, training)
+        #pdb.set_trace()
         g_forget = self.__g_forget.forward(in_batch, hs, training)
         g_out = self.__g_out.forward(in_batch, hs, training)
         g_memory = self.__g_memory.forward(in_batch, hs, training)
 
         memory = self.__memory_unit.forward(g_forget, g_in, g_memory, training)
-        cur_hs = self.__out_unit.forward(g_out, memory)
+        cur_hs = self.__out_unit.forward(g_out, memory, training)
 
         return cur_hs
 
     def hiden_backward(self, gradient):
+        #pdb.set_trace()
         grad_out, grad_memory = self.__out_unit.backward(gradient)
         grad_forget, grad_in, grad_gm = self.__memory_unit.backward(grad_memory)
 
@@ -588,7 +632,7 @@ class LSTM(RNN):
         grad_in_batch += tmp1
         grad_hs += tmp2
 
-        tmp1, tmp2 = self.__g_forget.backward(grad_in)
+        tmp1, tmp2 = self.__g_in.backward(grad_in)
         grad_in_batch += tmp1
         grad_hs += tmp2
 
