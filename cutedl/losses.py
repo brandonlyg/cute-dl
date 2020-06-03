@@ -84,7 +84,7 @@ class BinaryCrossentropy(Loss):
         loss = (-y_true*np.log(y_prob) - (1-y_true)*np.log(1-y_prob))/m
         #计算梯度
         self.__grad = (y_prob - y_true)/m
-
+        #pdb.set_trace()
         return loss.sum()
 
     @property

@@ -35,7 +35,7 @@ def fit():
                 rnn.GRU(64),
                 nn.Filter(),
                 nn.Dense(64),
-                nn.Dense(1)
+                nn.Dense(1, activation='linear')
             ])
     model.assemble()
 
@@ -54,7 +54,7 @@ def fit():
         model.save(model_path+name)
 
     #pdb.set_trace()
-    history = sess.fit(ds_train, 3, val_data=ds_test, val_epochs=1,
+    history = sess.fit(ds_train, 3, val_data=ds_test, 
                         listeners=[
                             stop_fit,
                             session.FitListener('val_end', callback=accuracy),

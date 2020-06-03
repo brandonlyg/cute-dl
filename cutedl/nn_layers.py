@@ -73,6 +73,7 @@ class Dense(Layer):
         return self.__outshape
 
     def forward(self, in_batch, training=False):
+        #pdb.set_trace()
         W = self.__W.value
         b = self.__b.value
 
@@ -88,16 +89,14 @@ class Dense(Layer):
     '''
     def backward(self, gradient):
         W = self.__W.value
-
         #print("gradient shape:", gradient.shape)
+        #pdb.set_trace()
         grad = self.activation.grad(gradient)
 
         #参数梯度
         #(inshape, outshape) = (inshape, m) @ (m, outshape)
         self.__W.gradient = self.__in_batch.T @ grad
-
         self.__b.gradient = grad.sum(axis=0)
-        #pdb.set_trace()
         #数据梯度 (m,inshape) = (m,outshape) @ (outshape, inshape)
         out_grad = grad @ W.T
 
@@ -242,6 +241,7 @@ class Filter(Layer):
         out = np.zeros(self.__in_batch_shape)
         out[:, -1, :] = gradient
 
+        #pdb.set_trace()
         return out
 
     def reset(self):

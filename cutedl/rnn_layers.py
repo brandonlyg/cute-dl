@@ -107,6 +107,8 @@ class Embedding(Layer):
                     p.gradient += grad
 
         self.__cur_params = list(params.values())
+
+        #pdb.set_trace()
         #print("params keys: ", list(params.keys()))
 
     def reset(self):
@@ -175,6 +177,7 @@ class RNN(Layer):
             hstatus[:, t, :] = self.hiden_forward(in_batch[:,t,:], pre_hs, training)
             pre_hs = hstatus[:, t, :]
 
+        #pdb.set_trace()
         return hstatus
 
     def backward(self, gradient):
@@ -182,12 +185,14 @@ class RNN(Layer):
 
         in_units = self.__in_units
         grad_x = np.zeros((m, T, in_units))
+        #pdb.set_trace()
         for t in range(T-1, -1, -1):
             grad_x[:,t,:], grad_hs = self.hiden_backward(gradient[:,t,:])
             #pdb.set_trace()
             if t - 1 >= 0:
                 gradient[:,t-1,:] = gradient[:,t-1,:] + grad_hs
 
+        #pdb.set_trace()
         return grad_x
 
 
@@ -227,11 +232,13 @@ class GateUnit(Layer):
         initializers = self.bias_initializers
 
         shape = self.__inshape + self.__outshape
-        val = initializers['uniform'](shape)
+        std = np.sqrt(6/(self.__inshape[0] + self.__outshape[0]))
+
+        val = initializers['uniform'](shape) * std * 10
         self.__W = LayerParam(self.name, 'weight', val)
 
         shape = self.__outshape + self.__outshape
-        val = initializers['uniform'](shape)
+        val = initializers['uniform'](shape) * std * 10
         self.__Wh = LayerParam(self.name, 'weight_hiden', val)
 
         val = initializers['zeros']((shape[1],))
@@ -355,9 +362,7 @@ class GRUOutUnit:
 
     def forward(self, gu, pre_hs, cddout, training):
         out = gu * pre_hs + (1-gu) * cddout
-
         #pdb.set_trace()
-        gus = self.__gus
         if training:
             self.__gus.append(gu)
             self.__pre_hs.append(pre_hs)
@@ -410,7 +415,7 @@ class GRU(RNN):
         #pdb.set_trace()
         self.__g_reset = GateUnit(out_units, in_units, parent_layer=self, layer_id=1)
         self.__g_update = GateUnit(out_units, in_units, parent_layer=self, layer_id=2)
-        self.__g_cddout = GateUnit(out_units, in_units, parent_layer=self, layer_id=3)
+        self.__g_cddout = GateUnit(out_units, in_units, activation='tanh', parent_layer=self, layer_id=3)
 
         self.__u_gr = MultiplyUnit()
         self.__u_out = GRUOutUnit()

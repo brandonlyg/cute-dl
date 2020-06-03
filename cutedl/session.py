@@ -77,6 +77,7 @@ class Session(object):
     data  训练数据集 Dataset对象
     epochs 训练轮数
     val_data 验证数据集 Dataset对象
+    val_batchs 每次验证从验证数据集中抽取的批数, -1 全部验证
     val_epochs 每val_epochs步使用val_data进行一次验证, 同时记录记录当前训练的损失值.
     val_steps 和val_epochs的作用一样, 如果>0优先使用这个设置.
     listeners 训练事件监听器. FitLisener类型.
@@ -96,7 +97,7 @@ class Session(object):
             'cost_time': float
         }
     '''
-    def fit(self, data, epochs, val_data=None, val_epochs=1, val_steps=0, listeners=[]):
+    def fit(self, data, epochs, val_data=None, val_batchs=-1, val_epochs=1, val_steps=0, listeners=[]):
         history = {
             'loss': [],
             'val_loss': [],
@@ -164,7 +165,7 @@ class Session(object):
             str_epochs = ("%0"+str(len(str(epochs)))+"d/%d")%(epoch, epochs)
 
             txt = (">"*(int(prog * w))) + (" "*w)
-            txt = txt[:w]
+            txt = txt[:w] + " %d/%d"%((step%steps), steps)
             if val_loss < 0:
                 txt = txt + (" loss=%f   "%loss)
                 print("%s %s"%(str_epochs, txt), end='\r')
