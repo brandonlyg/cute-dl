@@ -47,16 +47,19 @@ class Layer(object):
     '''
     activation: 激活函数的名字
     '''
-    def __init__(self, activation='linear', parent_layer=None, layer_id=0):
+    def __init__(self, activation='linear', parent_layer):
 
         #得到激活函数
         self.__activation = activations.get(activation)
+
+        #当前层子层的id seed
+        self.__child_id_seed = 1
 
         #父层
         self.__parent = parent_layer
 
         #层在模型中的id, 是层在模型中的索引
-        self.__id = layer_id
+        self.__id = 0
         #层的名字
         self.__name = ''
 
@@ -71,9 +74,20 @@ class Layer(object):
     生成层名称
     '''
     def __gen_layer_name(self):
-        self.__name = '/%d-%s'%(self.__id, self.tag)
         if self.__parent is not None:
-            self.__name = self.__parent.name + self.__name
+            self.__id = self.parent.get_child_id()
+            self.__name = '%s/%d-%s' % (self.__parent.name, self.__id, self.tag)
+        else:
+            self.__name = '/%d-%s'%(self.__id, self.tag)
+
+
+    '''
+    得到一个新层的子层ID
+    '''
+    def get_child_id(self):
+        id = self.__child_id_seed
+        self.__child_id_seed += 1
+        return id
 
     '''
     检查形状
@@ -160,6 +174,14 @@ class Layer(object):
     def params(self):
         return []
 
+
+    '''
+    设置当前层的父层
+    '''
+    def set_parent(self, layer):
+        self.__parent = layer
+        self.__gen_layer_name()
+
     '''
     上一个层属性
     '''
@@ -172,9 +194,11 @@ class Layer(object):
     '''
     def set_prev(self, prev_layer):
         self.__prev = prev_layer
-        self.__id = prev_layer.layer_id + 1
 
-        self.__gen_layer_name()
+        if self.__parent is None:
+            #当前层没有父层
+            self.__id = prev_layer.layer_id + 1
+            self.__gen_layer_name()
 
     '''
     输入形状

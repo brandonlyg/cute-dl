@@ -74,10 +74,12 @@ def test_fitreport():
 '''
 计算多分类预测结果准确率
 '''
-def categorical_accuracy(y_true, history):
+def categorical_accuracy(history):
     val_pred = history['val_pred']
+    val_true = history['val_true']
     y_pred = np.argmax(val_pred, axis=1)
-    y_true = np.argmax(y_true, axis=1)
+    y_true = np.argmax(val_true, axis=1)
+    
     acc = (y_pred == y_true).astype(int).mean()
 
     if 'val_accuracy' not in history:
@@ -90,12 +92,14 @@ def categorical_accuracy(y_true, history):
 '''
 计算二分类预测结果准确率
 '''
-def binary_accuracy(y_true, history):
+def binary_accuracy(history):
     val_pred = history['val_pred']
-    y_pred = val_pred.reshape(-1)
-    y_true = y_true.reshape(-1)
+    val_true = history['val_true']
 
-    y_pred = (y_pred > 0.5).astype(int)
+    y_pred = val_pred.reshape(-1)
+    y_true = val_true.reshape(-1)
+
+    y_pred = (y_pred > 0).astype(int)
 
     acc = (y_pred == y_true).astype(int).mean()
 

@@ -98,13 +98,14 @@ class Embedding(Layer):
                 if idx == self.__padding:
                     continue
 
+                #更新当前训练批次的梯度
                 if idx not in params:
+                    #当前批次第一次发现该嵌入向量
                     params[idx] = self.__params[idx]
-                p = params[idx]
-                if p.gradient is None:
-                    p.gradient = grad
+                    params[idx].gradient = grad
                 else:
-                    p.gradient += grad
+                    #累加当前批次梯度
+                    params[idx].gradient += grad
 
         self.__cur_params = list(params.values())
 
@@ -413,9 +414,9 @@ class GRU(RNN):
         in_units = self.in_units
 
         #pdb.set_trace()
-        self.__g_reset = GateUnit(out_units, in_units, parent_layer=self, layer_id=1)
-        self.__g_update = GateUnit(out_units, in_units, parent_layer=self, layer_id=2)
-        self.__g_cddout = GateUnit(out_units, in_units, activation='tanh', parent_layer=self, layer_id=3)
+        self.__g_reset = GateUnit(out_units, in_units, parent_layer=self)
+        self.__g_update = GateUnit(out_units, in_units, parent_layer=self)
+        self.__g_cddout = GateUnit(out_units, in_units, activation='tanh', parent_layer=self)
 
         self.__u_gr = MultiplyUnit()
         self.__u_out = GRUOutUnit()
@@ -589,13 +590,13 @@ class LSTM(RNN):
         out_units = self.out_units
 
         #输入门
-        self.__g_in = GateUnit(out_units, in_units, parent_layer=self, layer_id=1)
+        self.__g_in = GateUnit(out_units, in_units, parent_layer=self)
         #遗忘门
-        self.__g_forget = GateUnit(out_units, in_units, parent_layer=self, layer_id=2)
+        self.__g_forget = GateUnit(out_units, in_units, parent_layer=self)
         #输出门
-        self.__g_out = GateUnit(out_units, in_units, parent_layer=self, layer_id=3)
+        self.__g_out = GateUnit(out_units, in_units, parent_layer=self)
         #记忆门
-        self.__g_memory = GateUnit(out_units, in_units, activation='tanh', parent_layer=self, layer_id=4)
+        self.__g_memory = GateUnit(out_units, in_units, activation='tanh', parent_layer=self)
 
         #记忆单元
         self.__memory_unit =LSTMMemoryUnit()

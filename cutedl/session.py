@@ -77,7 +77,7 @@ class Session(object):
     data  训练数据集 Dataset对象
     epochs 训练轮数
     val_data 验证数据集 Dataset对象
-    val_batchs 每次验证从验证数据集中抽取的批数, -1 全部验证
+    val_batchs 每次验证从验证数据集中抽取的批数, <=0 全部验证
     val_epochs 每val_epochs步使用val_data进行一次验证, 同时记录记录当前训练的损失值.
     val_steps 和val_epochs的作用一样, 如果>0优先使用这个设置.
     listeners 训练事件监听器. FitLisener类型.
@@ -118,7 +118,11 @@ class Session(object):
         if val_steps <= 0:
             val_steps = val_epochs * data.batch_count
 
-        print("val_steps: ", val_steps)
+        if val_data is not None:
+            if val_batchs <= 0:
+                val_batchs = val_data.batch_count
+
+            print("val_steps: ", val_steps, " val_batchs: ", val_batchs)
 
         #事件派发
         def event_dispatch(event):
@@ -132,7 +136,11 @@ class Session(object):
                 return None, None
 
             val_pred = None
+            val_true = None
             losses = []
+            count = 0
+            val_data.shuffle()
+            print("")
             for batch_x, batch_y in val_data.as_iterator():
                 #pdb.set_trace()
                 y_pred = self.__model.predict(batch_x)
@@ -141,14 +149,22 @@ class Session(object):
 
                 if val_pred is None:
                     val_pred = y_pred
+                    val_true = batch_y
                 else:
                     val_pred = np.vstack((val_pred, y_pred))
+                    val_true = np.vstack((val_true, batch_y))
+
+                count += 1
+                if count >= val_batchs:
+                    break
+
+                print("validating %d/%d" % (count, val_batchs), end='\r')
 
             loss = np.mean(np.array(losses))
-            return loss, val_pred
+            return loss, val_pred, val_true
 
         #记录
-        def record(loss, val_loss, val_pred, step):
+        def record(loss, val_loss, val_pred, val_true, step):
             history['loss'].append(loss)
             history['steps'].append(step)
             history['cost_time'] = time.time() - start_time
@@ -156,6 +172,7 @@ class Session(object):
             if history['val_loss'] is not None and val_loss is not None :
                 history['val_loss'].append(val_loss)
                 history['val_pred'] = val_pred
+                history['val_true'] = val_true
 
         #显示训练进度
         def display_progress(epoch, epochs, step, steps, loss, val_loss=-1):
@@ -191,8 +208,8 @@ class Session(object):
                 step += 1
                 if step % val_steps == 0:
                     event_dispatch("val_start")
-                    val_loss, val_pred = validation()
-                    record(loss, val_loss, val_pred, step)
+                    val_loss, val_pred, val_true = validation()
+                    record(loss, val_loss, val_pred, val_true, step)
                     display_progress(epoch+1, epochs, step, val_steps, loss, val_loss)
                     event_dispatch("val_end")
 
