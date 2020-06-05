@@ -31,7 +31,7 @@ class IMDBR:
 
         self.__dir = dir
 
-    def load_ds(self, batch_size):
+    def load_ds(self, batch_size, batches=0):
         #默认加imdbr文件
         ds_file = self.__dir + "/imdbr.pkl"
         if not os.path.exists(ds_file):
@@ -64,10 +64,10 @@ class IMDBR:
              )
 
         labels = np.array(ds['train_labels']).reshape((-1, 1))
-        train = RaggedDataset(ds['train_datas'], labels, batch_size)
+        train = RaggedDataset(ds['train_datas'], labels, batch_size, batches)
 
         labels = np.array(ds['test_labels']).reshape((-1, 1))
-        test = RaggedDataset(ds['test_datas'], labels, batch_size)
+        test = RaggedDataset(ds['test_datas'], labels, batch_size, batches)
 
         return train, test, vocab_size
 

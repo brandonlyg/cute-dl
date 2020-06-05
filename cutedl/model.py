@@ -47,7 +47,7 @@ class Layer(object):
     '''
     activation: 激活函数的名字
     '''
-    def __init__(self, activation='linear', parent_layer):
+    def __init__(self, activation='linear'):
 
         #得到激活函数
         self.__activation = activations.get(activation)
@@ -56,26 +56,23 @@ class Layer(object):
         self.__child_id_seed = 1
 
         #父层
-        self.__parent = parent_layer
+        self.__parent = None
 
-        #层在模型中的id, 是层在模型中的索引
+        #层在模型中的id, 当前在父层中的索引
         self.__id = 0
         #层的名字
-        self.__name = ''
+        self.__name = self.tag
 
         #上一个层
         self.__prev = None
-
-        #生成层名称
-        self.__gen_layer_name()
-
 
     '''
     生成层名称
     '''
     def __gen_layer_name(self):
         if self.__parent is not None:
-            self.__id = self.parent.get_child_id()
+            #pdb.set_trace()
+            self.__id = self.__parent.get_child_id()
             self.__name = '%s/%d-%s' % (self.__parent.name, self.__id, self.tag)
         else:
             self.__name = '/%d-%s'%(self.__id, self.tag)
@@ -182,6 +179,10 @@ class Layer(object):
         self.__parent = layer
         self.__gen_layer_name()
 
+    @property
+    def parent(self):
+        return self.__parent
+
     '''
     上一个层属性
     '''
@@ -194,11 +195,6 @@ class Layer(object):
     '''
     def set_prev(self, prev_layer):
         self.__prev = prev_layer
-
-        if self.__parent is None:
-            #当前层没有父层
-            self.__id = prev_layer.layer_id + 1
-            self.__gen_layer_name()
 
     '''
     输入形状
@@ -231,6 +227,23 @@ class Layer(object):
 
     #重置当前层的状态
     def reset(self):
+        pass
+
+'''
+根层
+'''
+class RootLayer(Layer):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def name(self):
+        return  "/"
+
+    def set_parent(self, layer):
+        pass
+
+    def set_prev(self, layer):
         pass
 
 '''
@@ -291,12 +304,15 @@ class Model(object):
         self.__check()
         count = len(self.__layers)
 
+        root = RootLayer()
+
         #把层按顺序组装起来
         pre_ly = None
         for ly in self.__layers:
             if pre_ly is not None:
                 ly.set_prev(pre_ly)
 
+            ly.set_parent(root)
             ly.init_params()
             pre_ly = ly
 

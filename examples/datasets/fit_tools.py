@@ -12,7 +12,6 @@ def fit_report(history, fpath, skip=0):
     #绘制训练历史
     loss = history['loss'][skip:]
     val_loss = history['val_loss'][skip:]
-    val_acc = history['val_accuracy'][skip:]
     x = history['steps'][skip:]
 
     plt.subplot(211)
@@ -35,21 +34,32 @@ def fit_report(history, fpath, skip=0):
     plt.legend()
 
     plt.subplot(212)
-    ymin = int(min(val_acc) * 100)/100
-    ymax = ymin + (1-ymin)/0.75
-    plt.ylim((ymin, ymax))
-    #pdb.set_trace()
-    plt.plot(x, val_acc, 'g', label="Validation accuracy")
-    txt = 'val_accuracy max:%f, final:%f\n'%(max(val_acc), val_acc[-1])
-    plt.text(x[-1], (ymax-ymin)*0.8 + ymin, txt,
-            color='orange', horizontalalignment='right', verticalalignment='center',
-            )
-    plt.xlabel("steps")
-    plt.ylabel("accuracy")
-    plt.legend()
+
+    if 'val_accuracy' in history:
+        #绘制模型验证准确率图像
+        val_acc = history['val_accuracy'][skip:]
+        ymin = int(min(val_acc) * 100)/100
+        ymax = ymin + (1-ymin)/0.75
+        plt.ylim((ymin, ymax))
+        #pdb.set_trace()
+        plt.plot(x, val_acc, 'g', label="Validation accuracy")
+        txt = 'val_accuracy max:%f, final:%f\n'%(max(val_acc), val_acc[-1])
+        plt.text(x[-1], (ymax-ymin)*0.8 + ymin, txt,
+                color='orange', horizontalalignment='right', verticalalignment='center',
+                )
+        plt.xlabel("steps")
+        plt.ylabel("accuracy")
+        plt.legend()
+    else:
+        #绘制拟合曲线
+        val_x = history['val_x']
+        val_pred = history['val_pred'].reshape(-1)
+        val_true = history['val_true'].reshape(-1)
+
+        plt.scatter(val_x, val_true)
+        plt.plot(val_x, val_pred, 'r')
 
     plt.savefig(fpath)
-
     plt.clf()
 
 def test_fitreport():
@@ -79,7 +89,7 @@ def categorical_accuracy(history):
     val_true = history['val_true']
     y_pred = np.argmax(val_pred, axis=1)
     y_true = np.argmax(val_true, axis=1)
-    
+
     acc = (y_pred == y_true).astype(int).mean()
 
     if 'val_accuracy' not in history:

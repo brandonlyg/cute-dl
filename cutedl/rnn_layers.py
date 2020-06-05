@@ -133,6 +133,7 @@ class RNN(Layer):
 
         self.__out_units = out_units
 
+        self.__in_units = -1
         if in_units is not None:
             if type(in_units) != type(1):
                 raise Exception("invalid in_units: "+str(in_units))
@@ -206,7 +207,7 @@ class GateUnit(Layer):
     '''
     输入输入
     '''
-    def __init__(self, outshape, inshape, parent_layer, layer_id, activation='sigmoid'):
+    def __init__(self, outshape, inshape, activation='sigmoid'):
         if type(outshape) != type(1):
             raise Exception("invalid outshape: %s"%str(outshape))
 
@@ -221,9 +222,7 @@ class GateUnit(Layer):
         self.__b = None
 
         #pdb.set_trace()
-        super().__init__(activation, parent_layer, layer_id)
-
-        self.init_params()
+        super().__init__(activation=activation)
 
         self.__hs = None
         self.__in_batchs = None
@@ -233,13 +232,13 @@ class GateUnit(Layer):
         initializers = self.bias_initializers
 
         shape = self.__inshape + self.__outshape
-        std = np.sqrt(6/(self.__inshape[0] + self.__outshape[0]))
+        #std = np.sqrt(6/(self.__inshape[0] + self.__outshape[0]))
 
-        val = initializers['uniform'](shape) * std * 10
+        val = initializers['uniform'](shape) * 0.1
         self.__W = LayerParam(self.name, 'weight', val)
 
         shape = self.__outshape + self.__outshape
-        val = initializers['uniform'](shape) * std * 10
+        val = initializers['uniform'](shape) * 0.1
         self.__Wh = LayerParam(self.name, 'weight_hiden', val)
 
         val = initializers['zeros']((shape[1],))
@@ -274,6 +273,10 @@ class GateUnit(Layer):
                 self.__in_batchs = []
             self.__hs.append(hs)
             self.__in_batchs.append(in_batch)
+
+            self.__W.gradient = None
+            self.__Wh.gradient = None
+            self.__b.gradient = None
 
         return self.activation(out)
 
@@ -409,17 +412,29 @@ class GRU(RNN):
 
         super().__init__(out_units, in_units, activation=activation)
 
-    def init_params(self):
+    def set_parent(self, parent):
+        super().set_parent(parent)
+
         out_units = self.out_units
         in_units = self.in_units
 
         #pdb.set_trace()
-        self.__g_reset = GateUnit(out_units, in_units, parent_layer=self)
-        self.__g_update = GateUnit(out_units, in_units, parent_layer=self)
-        self.__g_cddout = GateUnit(out_units, in_units, activation='tanh', parent_layer=self)
+        self.__g_reset = GateUnit(out_units, in_units)
+        self.__g_update = GateUnit(out_units, in_units)
+        self.__g_cddout = GateUnit(out_units, in_units, activation='tanh')
+
+        self.__g_reset.set_parent(self)
+        self.__g_update.set_parent(self)
+        self.__g_cddout.set_parent(self)
 
         self.__u_gr = MultiplyUnit()
         self.__u_out = GRUOutUnit()
+
+
+    def init_params(self):
+        self.__g_reset.init_params()
+        self.__g_update.init_params()
+        self.__g_cddout.init_params()
 
     @property
     def params(self):
@@ -590,13 +605,13 @@ class LSTM(RNN):
         out_units = self.out_units
 
         #输入门
-        self.__g_in = GateUnit(out_units, in_units, parent_layer=self)
+        self.__g_in = GateUnit(out_units, in_units, parent=self)
         #遗忘门
-        self.__g_forget = GateUnit(out_units, in_units, parent_layer=self)
+        self.__g_forget = GateUnit(out_units, in_units, parent=self)
         #输出门
-        self.__g_out = GateUnit(out_units, in_units, parent_layer=self)
+        self.__g_out = GateUnit(out_units, in_units, parent=self)
         #记忆门
-        self.__g_memory = GateUnit(out_units, in_units, activation='tanh', parent_layer=self)
+        self.__g_memory = GateUnit(out_units, in_units, activation='tanh', parent=self)
 
         #记忆单元
         self.__memory_unit =LSTMMemoryUnit()

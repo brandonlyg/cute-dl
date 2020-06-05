@@ -26,13 +26,14 @@ from cutedl.session import Session
 from cutedl import session, losses, optimizers, utils
 from cutedl import nn_layers as nn
 from cutedl import rnn_layers as rnn
+from cutedl import wrapper_layers as wrapper
 
 report_path = "./pics/imdbr-recoginze"
 model_path = "./model/imdbr-recoginze"
 def fit():
     model = Model([
                 rnn.Embedding(16, vocab_size+1),
-                rnn.GRU(64),
+                wrapper.Bidirectional(rnn.GRU(64), rnn.GRU(64)),
                 nn.Filter(),
                 nn.Dense(64),
                 nn.Dense(1, activation='linear')
@@ -44,7 +45,7 @@ def fit():
                 optimizer = optimizers.Adam()
             )
 
-    stop_fit = session.condition_callback(lambda :sess.stop_fit(), 'val_loss', 20)
+    stop_fit = session.condition_callback(lambda :sess.stop_fit(), 'val_loss', 10)
 
     def save_and_report(history):
         #pdb.set_trace()
@@ -52,7 +53,7 @@ def fit():
         model.save(model_path)
 
     #pdb.set_trace()
-    history = sess.fit(ds_train, 100, val_data=ds_test, val_batchs=20,
+    history = sess.fit(ds_train, 100, val_data=ds_test,
                         listeners=[
                             stop_fit,
                             session.FitListener('val_end', callback=fit_tools.binary_accuracy),

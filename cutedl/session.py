@@ -122,7 +122,7 @@ class Session(object):
             if val_batchs <= 0:
                 val_batchs = val_data.batch_count
 
-            print("val_steps: ", val_steps, " val_batchs: ", val_batchs)
+            print("val_steps: ", val_steps, " val_batches: ", val_batchs)
 
         #事件派发
         def event_dispatch(event):
@@ -139,7 +139,7 @@ class Session(object):
             val_true = None
             losses = []
             count = 0
-            val_data.shuffle()
+            #val_data.shuffle()
             print("")
             for batch_x, batch_y in val_data.as_iterator():
                 #pdb.set_trace()

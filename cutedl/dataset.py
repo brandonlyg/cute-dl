@@ -71,8 +71,9 @@ class RaggedDataset:
     '''
     data 数据list
     labels 标签np.array
+    batches 数据集的最大批次数 <=0 表示使用所有数据
     '''
-    def __init__(self, datas, labels, batch_size, padding=0):
+    def __init__(self, datas, labels, batch_size, batches=0, padding=0):
         if labels is not None and len(datas) != len(labels):
             raise Exception("invalid datas and labels count not equal.")
 
@@ -125,6 +126,12 @@ class RaggedDataset:
 
         self.__datas = batch_datas
         self.__labels = batch_labels
+
+        if batches <= 0:
+            batches = len(datas)
+
+        self.__datas = self.__datas[0:batches]
+        self.__labels = self.__labels[0:batches]
 
         self.__indices = None
         self.shuffle()
