@@ -8,7 +8,7 @@ import pdb
 
 import unittest
 from unittest import TestCase
-from cutedl.model import Layer, LayerParam, Model
+from cutedl.model import Layer, RootLayer, LayerParam, Model
 import numpy as np
 from example_layer import Simplelayer
 
@@ -30,8 +30,11 @@ class TestLayer(TestCase):
         cls.ly_0 = Simplelayer((3,3), inshape=2)
         cls.ly_1 = Simplelayer((4,4), inshape=(-1,-1))
 
-        cls.ly_0.set_next(cls.ly_1)
+        root = RootLayer()
+        cls.ly_0.set_parent(root)
+
         cls.ly_1.set_prev(cls.ly_0)
+        cls.ly_1.set_parent(root)
 
         cls.ly_0.init_params()
         cls.ly_1.init_params()

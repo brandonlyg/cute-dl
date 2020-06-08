@@ -77,21 +77,17 @@ def sample_dataset(seqlen, batch_size, batches):
 
     return train, test
 
+'''
+训练集采样区间: [1, 200.01)
+测试集采样区间: [200.02, 240.002)
+'''
 ds_train, ds_test = sample_dataset(100, 32, 200)
 #pdb.set_trace()
 
-report_path = "./pics/fit_function"
-model_path = "./model/fit_function"
-def fit():
-    model = Model([
-                rnn.GRU(32, 1),
-                nn.Filter(),
-                nn.Dense(32),
-                nn.Dense(1, activation='linear')
-            ])
-    model.assemble()
+report_path = "./pics/fit-function-"
+model_path = "./model/fit-function-"
 
-
+def fit(name, model):
     sess = Session(model,
                 loss = losses.Mse(),
                 optimizer = optimizers.Adam()
@@ -107,8 +103,8 @@ def fit():
         val_x = np.linspace(1, 1+m*0.01, m)
         history['val_x'] = val_x
         #pdb.set_trace()
-        fit_tools.fit_report(history, report_path+".png")
-        model.save(model_path)
+        fit_tools.fit_report(history, report_path+name+".png")
+        model.save(model_path+name)
 
     #pdb.set_trace()
     history = sess.fit(ds_train, 100, val_data=ds_test,
@@ -120,6 +116,29 @@ def fit():
 
     save_and_report(history)
 
+
+def fit_gru():
+    model = Model([
+                rnn.GRU(32, 1),
+                nn.Filter(),
+                nn.Dense(32),
+                nn.Dense(1, activation='linear')
+            ])
+    model.assemble()
+    fit('gru', model)
+
+
+def fit_lstm():
+    model = Model([
+                rnn.LSTM(32, 1),
+                nn.Filter(),
+                nn.Dense(32),
+                nn.Dense(1, activation='linear')
+            ])
+    model.assemble()
+    fit('lstm', model)
+
 if '__main__' == __name__:
-    fit()
+    #fit_gru()
+    fit_lstm()
     pass

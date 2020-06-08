@@ -97,7 +97,7 @@ class Session(object):
             'cost_time': float
         }
     '''
-    def fit(self, data, epochs, val_data=None, val_batchs=-1, val_epochs=1, val_steps=0, listeners=[]):
+    def fit(self, data, epochs, val_data=None, val_batches=-1, val_epochs=1, val_steps=0, listeners=[]):
         history = {
             'loss': [],
             'val_loss': [],
@@ -119,10 +119,10 @@ class Session(object):
             val_steps = val_epochs * data.batch_count
 
         if val_data is not None:
-            if val_batchs <= 0:
-                val_batchs = val_data.batch_count
+            if val_batches <= 0:
+                val_batches = val_data.batch_count
 
-            print("val_steps: ", val_steps, " val_batches: ", val_batchs)
+            print("val_steps: ", val_steps, " val_batches: ", val_batches)
 
         #事件派发
         def event_dispatch(event):
@@ -139,7 +139,9 @@ class Session(object):
             val_true = None
             losses = []
             count = 0
-            #val_data.shuffle()
+
+            if val_batches < val_data.batch_count:
+                val_data.shuffle()
             print("")
             for batch_x, batch_y in val_data.as_iterator():
                 #pdb.set_trace()
@@ -155,10 +157,10 @@ class Session(object):
                     val_true = np.vstack((val_true, batch_y))
 
                 count += 1
-                if count >= val_batchs:
+                if count >= val_batches:
                     break
 
-                print("validating %d/%d" % (count, val_batchs), end='\r')
+                print("validating %d/%d" % (count, val_batches), end='\r')
 
             loss = np.mean(np.array(losses))
             return loss, val_pred, val_true

@@ -6,6 +6,7 @@ sys.path.append("../cutedl")
 
 import unittest
 from unittest import TestCase
+from cutedl.model import RootLayer
 from cutedl import nn_layers as nn
 import numpy as np
 
@@ -21,8 +22,14 @@ class TestNNLayer(TestCase):
         cls.ly_dropout = nn.Dropout(keep_prob=0.5)
         cls.ly_dense1 = nn.Dense(6)
 
+        root = RootLayer()
+
         cls.ly_dropout.set_prev(cls.ly_dense)
         cls.ly_dense1.set_prev(cls.ly_dropout)
+
+        cls.ly_dense.set_parent(root)
+        cls.ly_dropout.set_parent(root)
+        cls.ly_dense1.set_parent(root)
 
         cls.ly_dense.init_params()
         cls.ly_dropout.init_params()

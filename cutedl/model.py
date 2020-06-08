@@ -361,7 +361,7 @@ class Model(object):
         if not os.path.exists(dir):
             os.mkdir(dir)
 
-        self.reset()
+        #self.reset()
         realfp = fpath + ".m.pkl"
         with open(realfp, 'wb') as f:
             pickle.dump(self, f)

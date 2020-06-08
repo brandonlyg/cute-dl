@@ -28,18 +28,10 @@ from cutedl import nn_layers as nn
 from cutedl import rnn_layers as rnn
 from cutedl import wrapper_layers as wrapper
 
-report_path = "./pics/imdbr-recoginze"
-model_path = "./model/imdbr-recoginze"
-def fit():
-    model = Model([
-                rnn.Embedding(16, vocab_size+1),
-                wrapper.Bidirectional(rnn.GRU(64), rnn.GRU(64)),
-                nn.Filter(),
-                nn.Dense(64),
-                nn.Dense(1, activation='linear')
-            ])
-    model.assemble()
+report_path = "./pics/imdbr-recoginze-"
+model_path = "./model/imdbr-recoginze-"
 
+def fit(name, model):
     sess = Session(model,
                 loss = losses.BinaryCrossentropy(),
                 optimizer = optimizers.Adam()
@@ -49,11 +41,11 @@ def fit():
 
     def save_and_report(history):
         #pdb.set_trace()
-        fit_tools.fit_report(history, report_path+".png")
-        model.save(model_path)
+        fit_tools.fit_report(history, report_path+name+".png")
+        model.save(model_path+name)
 
     #pdb.set_trace()
-    history = sess.fit(ds_train, 100, val_data=ds_test,
+    history = sess.fit(ds_train, 100, val_data=ds_test, val_batches=20,
                         listeners=[
                             stop_fit,
                             session.FitListener('val_end', callback=fit_tools.binary_accuracy),
@@ -63,5 +55,33 @@ def fit():
 
     save_and_report(history)
 
+
+def fit_gru():
+    print("fit gru")
+    model = Model([
+                rnn.Embedding(64, vocab_size+1),
+                wrapper.Bidirectional(rnn.GRU(64), rnn.GRU(64)),
+                nn.Filter(),
+                nn.Dense(64),
+                nn.Dense(1, activation='linear')
+            ])
+    model.assemble()
+    fit('gru', model)
+
+def fit_lstm():
+    print("fit lstm")
+    model = Model([
+                rnn.Embedding(64, vocab_size+1),
+                wrapper.Bidirectional(rnn.LSTM(64), rnn.LSTM(64)),
+                nn.Filter(),
+                nn.Dense(64),
+                nn.Dense(1, activation='linear')
+            ])
+    model.assemble()
+    fit('lstm', model)
+
+
 if '__main__' == __name__:
-    fit()
+    fit_gru()
+    #fit_lstm()
+    pass

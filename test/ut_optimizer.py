@@ -91,7 +91,8 @@ class TestLayer(TestCase):
         rmsprop(model)
         for ly in model.layer_iterator():
             for p in ly.params:
-                print("name:", p.name, " rmsprop_momentum:", p.rmsprop_momentum)
+                #pdb.set_trace()
+                print("name:", p.name, " rmsprop_momentum:", p.rmsprop_storeup)
 
     def test_adadelta(self):
         print("test Adadelta")

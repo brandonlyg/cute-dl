@@ -20,16 +20,11 @@ class Embedding(Layer):
     dims 嵌入向量维度
     vocabulary_size 词汇表大小
     need_train 是否需要训练嵌入向量
-    padding 填充值, 指定词典中的填充值,
-            嵌入层会把索引为padding的嵌入向量初始化为0, 如果need_train=True, 该向量也不会参与训练
     '''
-    def __init__(self, dims, vocabulary_size, need_train=True, padding=0):
+    def __init__(self, dims, vocabulary_size, need_train=True):
         #初始化嵌入向量
         initializer = self.weight_initializers['uniform']
         self.__vecs = initializer((vocabulary_size, dims))
-        self.__vecs[padding] = np.zeros((dims,))
-
-        self.__padding = padding
 
         super().__init__()
 
@@ -95,8 +90,6 @@ class Embedding(Layer):
             for t in range(T):
                 grad = gradient[i, t]
                 idx = self.__in_batch[i, t]
-                if idx == self.__padding:
-                    continue
 
                 #更新当前训练批次的梯度
                 if idx not in params:
@@ -127,7 +120,19 @@ RNN 层定义
 class RNN(Layer):
     tag='RNN'
 
-    def __init__(self, out_units, in_units=None, activation='linear'):
+    '''
+    out_units 输出单元数
+    in_units 输入单元数
+    stateful 保留当前批次的最后一个时间步的状态作为下一个批次的输入状态, 默认False不保留
+
+    RNN 的输入形状是(m, t, in_units)
+    m: batch_size
+    t: 输入系列的长度
+    in_units: 输入单元数页是输入向量的维数
+
+    输出形状是(m, t, out_units)
+    '''
+    def __init__(self, out_units, in_units=None, stateful=False, activation='linear'):
         if type(out_units) != type(1):
             raise Exception("invalid out_units: "+str(out_units))
 
@@ -139,6 +144,9 @@ class RNN(Layer):
                 raise Exception("invalid in_units: "+str(in_units))
 
             self.__in_units = in_units
+
+        self.__stateful = stateful
+        self.__pre_hs = None
 
         super().__init__(activation)
 
@@ -158,6 +166,10 @@ class RNN(Layer):
     def outshape(self):
         return (-1, -1, self.__out_units)
 
+    @property
+    def stateful(self):
+        return self.__stateful
+
     def set_prev(self, prev_layer):
         outshape = prev_layer.outshape
         self.__in_units = outshape[-1]
@@ -171,15 +183,24 @@ class RNN(Layer):
 
     def forward(self, in_batch, training):
         m, T, n = in_batch.shape
-
         out_units = self.__out_units
+        #所有时间步的输出
         hstatus = np.zeros((m, T, out_units))
-        pre_hs = np.zeros((m, out_units))
+        #上一步的输出
+        pre_hs = self.__pre_hs
+        if pre_hs is None:
+            pre_hs = np.zeros((m, out_units))
+
+        #隐藏层循环过程, 沿时间步执行
         for t in range(T):
             hstatus[:, t, :] = self.hiden_forward(in_batch[:,t,:], pre_hs, training)
             pre_hs = hstatus[:, t, :]
 
+        self.__pre_hs = pre_hs
         #pdb.set_trace()
+        if not self.stateful:
+            self.__pre_hs = None
+
         return hstatus
 
     def backward(self, gradient):
@@ -197,6 +218,8 @@ class RNN(Layer):
         #pdb.set_trace()
         return grad_x
 
+    def reset(self):
+        self.__pre_hs = None
 
 '''
 隐藏门单元
@@ -217,15 +240,17 @@ class GateUnit(Layer):
         self.__outshape = (outshape,)
         self.__inshape = (inshape,)
 
-        self.__W = None
-        self.__Wh = None
-        self.__b = None
+        #3个参数
+        self.__W = None #当前时间步in_batch权重参数
+        self.__Wh = None #上一步输出的权重参数
+        self.__b = None #偏置量参数
 
         #pdb.set_trace()
         super().__init__(activation=activation)
 
-        self.__hs = None
-        self.__in_batchs = None
+        #输入栈
+        self.__hs = []  #上一步输出
+        self.__in_batchs = [] #当前时间步的in_batch
 
 
     def init_params(self):
@@ -267,13 +292,11 @@ class GateUnit(Layer):
         out = in_batch @ W + hs @ Wh + b
 
         if training:
-            if self.__hs is None:
-                self.__hs = []
-            if self.__in_batchs is None:
-                self.__in_batchs = []
+            #向前传播训练时把上一个时间步的输出和当前时间步的in_batch压栈
             self.__hs.append(hs)
             self.__in_batchs.append(in_batch)
 
+            #确保反向传播开始时参数的梯度为空
             self.__W.gradient = None
             self.__Wh.gradient = None
             self.__b.gradient = None
@@ -297,9 +320,12 @@ class GateUnit(Layer):
         grad_Wh = pre_hs.T @ grad
         grad_b = grad.sum(axis=0)
 
+        #反向传播计算
         if self.__W.gradient is None:
+            #当前批次第一次
             self.__W.gradient = grad_W
         else:
+            #累积当前批次的所有梯度
             self.__W.gradient = self.__W.gradient + grad_W
 
         if self.__Wh.gradient is None:
@@ -321,7 +347,6 @@ class GateUnit(Layer):
         self.__W = LayerParam.reset(self.__W)
         self.__Wh = LayerParam.reset(self.__Wh)
         self.__b = LayerParam.reset(self.__b)
-
 
 '''
 乘法单元
@@ -397,7 +422,7 @@ Gate Recurrent Units
 class GRU(RNN):
     tag='RNN-GRU'
 
-    def __init__(self, out_units, in_units=None, activation='linear'):
+    def __init__(self, out_units, in_units=None, stateful=False, activation='linear'):
         #重置门
         self.__g_reset = None
         #更新门
@@ -410,7 +435,7 @@ class GRU(RNN):
         #输出单元
         self.__u_out = None
 
-        super().__init__(out_units, in_units, activation=activation)
+        super().__init__(out_units, in_units, stateful=stateful, activation=activation)
 
     def set_parent(self, parent):
         super().set_parent(parent)
@@ -419,15 +444,20 @@ class GRU(RNN):
         in_units = self.in_units
 
         #pdb.set_trace()
+        #重置门
         self.__g_reset = GateUnit(out_units, in_units)
+        #更新门
         self.__g_update = GateUnit(out_units, in_units)
+        #候选输出门
         self.__g_cddout = GateUnit(out_units, in_units, activation='tanh')
 
         self.__g_reset.set_parent(self)
         self.__g_update.set_parent(self)
         self.__g_cddout.set_parent(self)
 
+        #重置门乘法单元
         self.__u_gr = MultiplyUnit()
+        #输出单元
         self.__u_out = GRUOutUnit()
 
 
@@ -460,6 +490,7 @@ class GRU(RNN):
         #pdb.set_trace()
         grad_in_batch, grad_ugr = self.__g_cddout.backward(grad_cddo)
 
+        #计算梯度的过程中需要累积上一层输出的梯度
         grad_gr, g_pre_hs = self.__u_gr.backward(grad_ugr)
         grad_pre_hs = grad_pre_hs + g_pre_hs
 
@@ -475,6 +506,7 @@ class GRU(RNN):
         return grad_in_batch, grad_pre_hs
 
     def reset(self):
+        super().reset()
         self.__g_update.reset()
         self.__g_reset.reset()
         self.__u_gr.reset()
@@ -489,32 +521,25 @@ class LSTMMemoryUnit:
     def __init__(self, activation='tanh'):
         self.__activation = activations.get(activation)
 
-        self.__memories = None
-        self.__inputs = None
-        self.__mcs = None
+        self.__memories = []
+        self.__inputs = []
+        self.__mcs = []
 
-        self.__pre_memory = None
+        self.__pre_mem = None
 
 
     def forward(self, forget, input, memory_choice, training):
-        if self.__pre_memory is None:
-            self.__pre_memory = np.zeros(forget.shape)
+        if self.__pre_mem is None:
+            self.__pre_mem = np.zeros(forget.shape)
 
-        cur_m = forget * self.__pre_memory + input * memory_choice
+        cur_m = forget * self.__pre_mem + input * memory_choice
 
         if training:
-            if self.__memories is None:
-                self.__memories = []
-            if self.__inputs is None:
-                self.__inputs = []
-            if self.__mcs is None:
-                self.__mcs = []
-
-            self.__memories.append(self.__pre_memory)
+            self.__memories.append(self.__pre_mem)
             self.__inputs.append(input)
             self.__mcs.append(memory_choice)
 
-        self.__pre_memory = cur_m
+        self.__pre_mem = cur_m
 
         return self.__activation(cur_m)
 
@@ -531,29 +556,29 @@ class LSTMMemoryUnit:
 
         return grad_forget, grad_input, grad_mc
 
-    def reset(self):
-        self.__memories = None
-        self.__inputs = None
-        self.__mcs = None
+    def clear_memory(self):
+        self.__pre_mem = None
 
-        self.__pre_memory = None
+    def reset(self):
+        self.__memories = []
+        self.__inputs = []
+        self.__mcs = []
+
+        self.clear_memory()
+
 
 '''
 LSTM 输出单元
 '''
 class LSTMOutUnit:
     def __init__(self):
-        self.__outs = None
-        self.__memories = None
+        self.__outs = []
+        self.__memories = []
 
     def forward(self, out, memory, training):
         res = out * memory
 
         if training:
-            if self.__outs is None:
-                self.__outs = []
-            if self.__memories is None:
-                self.__memories = []
             self.__outs.append(out)
             self.__memories.append(memory)
 
@@ -569,8 +594,8 @@ class LSTMOutUnit:
         return grad_out, grad_memory
 
     def reset(self):
-        self.__outs = None
-        self.__memories = None
+        self.__outs = []
+        self.__memories = []
 
 '''
 Long Shot-Term Memory Layer
@@ -581,7 +606,7 @@ class LSTM(RNN):
     '''
     units 输出维度
     '''
-    def __int__(self, out_units, in_units=None, activation='linear'):
+    def __int__(self, out_units, in_units=None, stateful=False, activation='linear'):
         #输入门
         self.__g_in = None
         #遗忘门
@@ -595,29 +620,41 @@ class LSTM(RNN):
         #输出单元
         self.__out_unit
 
-        super().__init__(out_units, in_units, activation)
+        super().__init__(out_units, in_units, stateful=stateful, activation=activation)
 
-    '''
-    初始化门
-    '''
-    def init_params(self):
+    def set_parent(self, layer):
+        super().set_parent(layer)
+
         in_units = self.in_units
         out_units = self.out_units
 
         #输入门
-        self.__g_in = GateUnit(out_units, in_units, parent=self)
+        self.__g_in = GateUnit(out_units, in_units)
         #遗忘门
-        self.__g_forget = GateUnit(out_units, in_units, parent=self)
+        self.__g_forget = GateUnit(out_units, in_units)
         #输出门
-        self.__g_out = GateUnit(out_units, in_units, parent=self)
+        self.__g_out = GateUnit(out_units, in_units)
         #记忆门
-        self.__g_memory = GateUnit(out_units, in_units, activation='tanh', parent=self)
+        self.__g_memory = GateUnit(out_units, in_units, activation='tanh')
+
+        self.__g_in.set_parent(self)
+        self.__g_forget.set_parent(self)
+        self.__g_out.set_parent(self)
+        self.__g_memory.set_parent(self)
 
         #记忆单元
         self.__memory_unit =LSTMMemoryUnit()
         #输出单元
         self.__out_unit = LSTMOutUnit()
 
+    '''
+    初始化门
+    '''
+    def init_params(self):
+        self.__g_in.init_params()
+        self.__g_forget.init_params()
+        self.__g_out.init_params()
+        self.__g_memory.init_params()
 
     @property
     def params(self):
@@ -626,6 +663,13 @@ class LSTM(RNN):
         res += self.__g_out.params
         res += self.__g_memory.params
         return res
+
+    def forward(self, in_batch, training):
+        out = super().forward(in_batch, training)
+        if not self.stateful:
+            self.__memory_unit.clear_memory()
+
+        return out
 
     def hiden_forward(self, in_batch, hs, training):
         g_in = self.__g_in.forward(in_batch, hs, training)
@@ -660,6 +704,8 @@ class LSTM(RNN):
         return grad_in_batch, grad_hs
 
     def reset(self):
+        super().reset()
+
         self.__g_in.reset()
         self.__g_forget.reset()
         self.__g_out.reset()

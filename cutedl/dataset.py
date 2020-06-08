@@ -95,9 +95,6 @@ class RaggedDataset:
             end = start + batch_size
             b_ids = indices[start:end]
             bs += 1
-            if b_ids.shape[0] != batch_size:
-                #不足一批
-                break
 
             #得到一批数据
             b_data = []
@@ -123,6 +120,10 @@ class RaggedDataset:
 
             batch_datas.append(np.array(b_data))
             batch_labels.append(b_label)
+
+            if b_ids.shape[0] != batch_size:
+                #不足一批
+                break
 
         self.__datas = batch_datas
         self.__labels = batch_labels

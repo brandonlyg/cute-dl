@@ -2,6 +2,7 @@
 
 import sys
 sys.path.append("..")
+sys.path.append("../cutedl")
 
 import unittest
 from unittest import TestCase

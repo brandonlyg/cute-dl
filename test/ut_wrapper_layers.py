@@ -43,7 +43,7 @@ class TestBidirectional(TestCase):
 
     def test_train(self):
         print("test train --")
-        pdb.set_trace()
+        #pdb.set_trace()
         bid = self.bid
         in_batch = np.random.uniform(-1, 1, (3, 3, 2))
         out = bid.forward(in_batch, training=True)

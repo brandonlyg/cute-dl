@@ -5,6 +5,7 @@ sys.path.append("../cutedl")
 import unittest
 from unittest import TestCase
 from cutedl import rnn_layers as rnn
+from cutedl.model import RootLayer
 import numpy as np
 
 def display_params(params):
@@ -76,7 +77,9 @@ class TestGateUnit(TestCase):
     @classmethod
     def setUpClass(cls):
         print("start TestGateUnit-------")
-        cls.gu = rnn.GateUnit(3, 2, None, 1)
+        root = RootLayer()
+        cls.gu = rnn.GateUnit(3, 2)
+        cls.gu.set_parent(root)
         cls.gu.init_params()
 
     def testParams(self):
@@ -113,7 +116,9 @@ class TestGRU(TestCase):
     @classmethod
     def setUpClass(cls):
         print("start test GRU ----------------")
+        root = RootLayer()
         cls.gru = rnn.GRU(4, 3)
+        cls.gru.set_parent(root)
         cls.gru.init_params()
 
     def test_params(self):
@@ -145,7 +150,9 @@ class TestLSTM(TestCase):
     @classmethod
     def setUpClass(cls):
         print("start test LSTM ----------------")
+        root = RootLayer()
         cls.lstm = rnn.LSTM(4, 3)
+        cls.lstm.set_parent(root)
         cls.lstm.init_params()
 
     def test_params(self):
