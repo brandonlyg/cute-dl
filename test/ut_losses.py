@@ -61,6 +61,13 @@ class TestLose(TestCase):
         loss = cce(y_true, y_pred)
         print("loss: ", loss)
 
+    def test_spare_categorical_cross_entropy(self):
+        print("test SparseCategoricalCrossentropy")
+        cce = losses.SparseCategoricalCrossentropy()
+
+        y_true = np.array([[0, 1, 2], [1, 0, 2], [2, 1, 0]])
+        y_pred = np.random.uniform(-1, 1, (3, 3, 3))
+
 
 
 if __name__ == '__main__':

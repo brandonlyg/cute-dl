@@ -48,6 +48,20 @@ def reduce(x, axis=None):
 
     return out, diff
 
+def one_hot(x, dim):
+    xshape = x.shape
+    x = x.reshape((-1, 1))
+    m = x.shape[0]
+
+    a = np.ones((m, 1))
+    b = np.arange(dim).reshape((1, dim))
+    c = a @ b
+    res = (x == c).astype(int)
+    res = res.reshape(xshape)
+
+    return res
+
+
 if '__main__' == __name__:
     print("flat_shape (2,):", flat_shape((2,)))
     print("flat_shape (2,3):", flat_shape((2,3)))

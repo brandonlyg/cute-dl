@@ -522,10 +522,12 @@ class LSTMMemoryUnit:
         self.__activation = activations.get(activation)
 
         self.__memories = []
+        self.__forgets = []
         self.__inputs = []
         self.__mcs = []
 
         self.__pre_mem = None
+        self.__pre_mem_grad = None
 
 
     def forward(self, forget, input, memory_choice, training):
@@ -536,6 +538,7 @@ class LSTMMemoryUnit:
 
         if training:
             self.__memories.append(self.__pre_mem)
+            self.__forgets.append(forget)
             self.__inputs.append(input)
             self.__mcs.append(memory_choice)
 
@@ -546,10 +549,15 @@ class LSTMMemoryUnit:
     def backward(self, gradient):
         grad = self.__activation.grad(gradient)
 
+        if self.__pre_mem_grad is not None:
+            grad += self.__pre_mem_grad
+
         pre_m = self.__memories.pop()
+        forget = self.__forgets.pop()
         input = self.__inputs.pop()
         mc = self.__mcs.pop()
 
+        self.__pre_mem_grad = grad * forget
         grad_forget = grad * pre_m
         grad_input = grad * mc
         grad_mc = grad * input
@@ -558,9 +566,11 @@ class LSTMMemoryUnit:
 
     def clear_memory(self):
         self.__pre_mem = None
+        self.__pre_mem_grad = None
 
     def reset(self):
         self.__memories = []
+        self.__forgets = []
         self.__inputs = []
         self.__mcs = []
 
@@ -665,9 +675,10 @@ class LSTM(RNN):
         return res
 
     def forward(self, in_batch, training):
+        #if not self.stateful:
+        self.__memory_unit.clear_memory()
+
         out = super().forward(in_batch, training)
-        if not self.stateful:
-            self.__memory_unit.clear_memory()
 
         return out
 

@@ -74,12 +74,19 @@ class Dense(Layer):
 
     def forward(self, in_batch, training=False):
         #pdb.set_trace()
+        in_batch_shape = in_batch.shape
+        if len(in_batch_shape) > 2:
+            in_batch = in_batch.reshape((-1, self.inshape[0]))
+
         W = self.__W.value
         b = self.__b.value
 
         out = in_batch @ W + b
 
         self.__in_batch = in_batch
+
+        if len(in_batch_shape) > 2:
+            out = out.reshape(in_batch_shape[0:-1] + self.outshape)
 
         return self.activation(out)
 
@@ -92,6 +99,9 @@ class Dense(Layer):
         #print("gradient shape:", gradient.shape)
         #pdb.set_trace()
         grad = self.activation.grad(gradient)
+        grad_shape = grad.shape
+        if len(grad_shape) > 2:
+            grad = grad.reshape((-1, self.outshape[0]))
 
         #参数梯度
         #(inshape, outshape) = (inshape, m) @ (m, outshape)
@@ -99,6 +109,9 @@ class Dense(Layer):
         self.__b.gradient = grad.sum(axis=0)
         #数据梯度 (m,inshape) = (m,outshape) @ (outshape, inshape)
         out_grad = grad @ W.T
+
+        if len(grad_shape) > 2:
+            out_grad = out_grad.reshape(grad_shape[0:-1]+self.inshape)
 
         return out_grad
 

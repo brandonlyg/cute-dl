@@ -131,3 +131,23 @@ class CategoricalCrossentropy(Loss):
     @property
     def gradient(self):
         return self.__grad
+
+'''
+多类别交叉熵损失函数
+和CategoricalCrossentropy功能一样, 但y_true大于2个维度, 且没有one-hot编码
+'''
+class SparseCategoricalCrossentropy(CategoricalCrossentropy):
+
+    def __init__(self, form_logits=True):
+        super().__init(form_logits)
+
+    '''
+    y_true shape=(m, ..., n)
+    y_pred shape=(m, ..., n, c)
+    '''
+    def __call__(self, y_true, y_pred):
+        #y_true one-hone编码
+        y_true = utils.one_hot(y_true, y_pred.shape[-1])
+
+        res = super().__call__(y_true, y_pres)
+        return res

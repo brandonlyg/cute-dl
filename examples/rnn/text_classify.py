@@ -63,6 +63,7 @@ def fit_gru():
                 wrapper.Bidirectional(rnn.GRU(64), rnn.GRU(64)),
                 nn.Filter(),
                 nn.Dense(64),
+                nn.Dropout(0.5),
                 nn.Dense(1, activation='linear')
             ])
     model.assemble()
@@ -75,6 +76,7 @@ def fit_lstm():
                 wrapper.Bidirectional(rnn.LSTM(64), rnn.LSTM(64)),
                 nn.Filter(),
                 nn.Dense(64),
+                nn.Dropout(0.5),
                 nn.Dense(1, activation='linear')
             ])
     model.assemble()
@@ -82,6 +84,6 @@ def fit_lstm():
 
 
 if '__main__' == __name__:
-    fit_gru()
-    #fit_lstm()
+    #fit_gru()
+    fit_lstm()
     pass

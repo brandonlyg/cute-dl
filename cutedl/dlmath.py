@@ -14,13 +14,17 @@ def tanh(x):
 
 '''
 转换成分布列
-x shape (m, n)
+x shape (m, ..., n)
 '''
 def prob_distribution(x):
+    xshape = x.shape
+    x = x.reshape((-1, xshape[-1]))
+
     expval = np.exp(x)
     sum = expval.sum(axis=1).reshape(-1,1) + 1e-8
 
     prob_d = expval/sum
+    prob_d = prob_d.reshape(xshape)
 
     return prob_d
 
