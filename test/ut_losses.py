@@ -4,6 +4,7 @@ import sys
 sys.path.append("..")
 sys.path.append("../cutedl")
 
+import pdb
 import unittest
 from unittest import TestCase
 from cutedl import losses
@@ -65,9 +66,13 @@ class TestLose(TestCase):
         print("test SparseCategoricalCrossentropy")
         cce = losses.SparseCategoricalCrossentropy()
 
+        #pdb.set_trace()
         y_true = np.array([[0, 1, 2], [1, 0, 2], [2, 1, 0]])
         y_pred = np.random.uniform(-1, 1, (3, 3, 3))
 
+        loss = cce(y_true, y_pred)
+        print("loss: ", loss)
+        self.assertEqual(cce.gradient.shape, (3,3,3))
 
 
 if __name__ == '__main__':

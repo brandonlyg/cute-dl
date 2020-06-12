@@ -60,7 +60,8 @@ class Dense(Layer):
         return [self.__W, self.__b]
 
     def set_prev(self, prev_layer):
-        self.__inshape = self.check_shape(prev_layer.outshape)
+        inshape = prev_layer.outshape
+        self.__inshape = (inshape[-1], )
         #pdb.set_trace()
         super().set_prev(prev_layer)
 

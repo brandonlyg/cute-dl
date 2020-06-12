@@ -13,7 +13,6 @@ sys.path.append('../../cutedl')
 import pdb
 import numpy as np
 
-from datasets.mnist import Mnist
 from datasets.imdbr import IMDBR
 from datasets import fit_tools
 
@@ -73,7 +72,7 @@ def fit_lstm():
     print("fit lstm")
     model = Model([
                 rnn.Embedding(64, vocab_size+1),
-                wrapper.Bidirectional(rnn.LSTM(64), rnn.LSTM(64)),
+                wrapper.Bidirectional(rnn.LSTM(128), rnn.LSTM(128)),
                 nn.Filter(),
                 nn.Dense(64),
                 nn.Dropout(0.5),

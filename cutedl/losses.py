@@ -139,7 +139,7 @@ class CategoricalCrossentropy(Loss):
 class SparseCategoricalCrossentropy(CategoricalCrossentropy):
 
     def __init__(self, form_logits=True):
-        super().__init(form_logits)
+        super().__init__(form_logits)
 
     '''
     y_true shape=(m, ..., n)
@@ -149,5 +149,5 @@ class SparseCategoricalCrossentropy(CategoricalCrossentropy):
         #y_true one-hone编码
         y_true = utils.one_hot(y_true, y_pred.shape[-1])
 
-        res = super().__call__(y_true, y_pres)
+        res = super().__call__(y_true, y_pred)
         return res

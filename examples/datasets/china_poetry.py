@@ -11,6 +11,8 @@ sys.path.append("../../cutedl")
 import pdb
 import os
 import pickle
+import glob
+import re
 
 import numpy as np
 from cutedl.dataset import Dataset
@@ -18,18 +20,17 @@ from text_tool import Vocabulary
 
 class ChinaPoetry:
 
-    def __init__(self, dir):
-        '''
-        dir 数据集所在目录, 默认在./china_poetry目录下
-        '''
-        def __init__(self, dir=None):
-            if dir is None:
-                dir = os.path.dirname(__file__) + "/china_poetry"
-                if dir == '/china_poetry':
-                    dir = '.'+dir
+    '''
+    dir 数据集所在目录, 默认在./china_poetry目录下
+    '''
+    def __init__(self, dir=None):
+        if dir is None:
+            dir = os.path.dirname(__file__) + "/china_poetry"
+            if dir == '/china_poetry':
+                dir = '.'+dir
 
-            self.__dir = dir
-            self.__vocab = None
+        self.__dir = dir
+        self.__vocab = None
 
 
     @property
@@ -41,6 +42,7 @@ class ChinaPoetry:
     '''
     def load_ds(self, batch_size, seqlen):
         #读取原始数据
+        print("read raw data")
         raw_data = self.__read_all()
 
         #加载词汇表
@@ -53,6 +55,7 @@ class ChinaPoetry:
             vocab = Vocabulary.load(fpath)
             self.__vocab = vocab
 
+        print("encoding")
         #筛选数据并编码
         datas = []
         labels = []
@@ -61,12 +64,13 @@ class ChinaPoetry:
                 continue
 
             r = vocab.encode(sentence=r)
-            datas.append[r[0:seqlen-1]]
-            labels.append[r[1:seqlen]]
+            datas.append(r[0:seqlen-1])
+            labels.append(r[1:seqlen])
 
         datas = np.array(datas)
         labels = np.array(labels)
 
+        print("load dataset successful")
         ds = Dataset(datas, labels, batch_size)
         return ds
 
@@ -119,7 +123,7 @@ class ChinaPoetry:
 
             return sentences
 
-        fnames = glob.glob(dir+"/*.txt")
+        fnames = glob.glob(self.__dir+"/*.txt")
         for fn in fnames:
             sentences = read_file(fn)
             res += sentences

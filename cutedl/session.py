@@ -133,7 +133,7 @@ class Session(object):
         #使用验证数据集验证
         def validation():
             if val_data is None:
-                return None, None
+                return -1, None, None
 
             val_pred = None
             val_true = None

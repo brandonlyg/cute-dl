@@ -11,17 +11,25 @@ def fit_report(history, fpath, skip=0):
 
     #绘制训练历史
     loss = history['loss'][skip:]
-    val_loss = history['val_loss'][skip:]
     x = history['steps'][skip:]
 
     plt.subplot(211)
     plt.plot(x, loss, 'b', label="Training loss")
-    plt.plot(x, val_loss, 'r', label="Validation loss")
 
-    y_max = max(max(val_loss), max(loss))
-    y_min = min(min(val_loss), min(loss))
+    val_loss = history['val_loss']
+    if val_loss is not None :
+        val_loss = val_loss[skip:]
+        plt.plot(x, val_loss, 'r', label="Validation loss")
+
+    y_max = max(loss)
+    y_min = min(loss)
+    if val_loss is not None :
+        y_max = max(max(val_loss), y_max)
+        y_min = min(min(val_loss), y_min)
+
     txt = 'loss min:%f, final:%f\n'%(min(loss), loss[-1])
-    txt = txt + 'val_loss min:%f, final:%f\n'%(min(val_loss), val_loss[-1])
+    if val_loss is not None:
+        txt = txt + 'val_loss min:%f, final:%f\n'%(min(val_loss), val_loss[-1])
     txt = txt + "steps:%d\n"%x[-1]
     txt = txt + "cost time:%fs\n"%history['cost_time']
     #pdb.set_trace()
@@ -33,9 +41,8 @@ def fit_report(history, fpath, skip=0):
     plt.ylabel("loss")
     plt.legend()
 
-    plt.subplot(212)
-
     if 'val_accuracy' in history:
+        plt.subplot(212)
         #绘制模型验证准确率图像
         val_acc = history['val_accuracy'][skip:]
         ymin = int(min(val_acc) * 100)/100
@@ -50,7 +57,9 @@ def fit_report(history, fpath, skip=0):
         plt.xlabel("steps")
         plt.ylabel("accuracy")
         plt.legend()
-    else:
+
+    elif 'val_x' in history:
+        plt.subplot(212)
         #绘制拟合曲线
         val_x = history['val_x']
         val_pred = history['val_pred'].reshape(-1)

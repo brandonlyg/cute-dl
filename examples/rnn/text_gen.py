@@ -26,9 +26,10 @@ from cutedl import session, losses, optimizers, utils
 from cutedl import nn_layers as nn
 from cutedl import rnn_layers as rnn
 from cutedl import wrapper_layers as wrapper
+from cutedl import dlmath
 
-report_path = "./pics/china-poetry-"
-model_path = "./model/china-poetry-"
+report_path = "./pics/text-gen-"
+model_path = "./model/text-gen-"
 
 def fit(name, model):
     sess = Session(model,
@@ -57,7 +58,7 @@ def fit(name, model):
 def fit_gru():
     vocab_size = vocab.size()
     model = Model([
-                rnn.Embedding(128, vocab_size+1, batch_size=64),
+                rnn.Embedding(128, vocab_size+1),
                 rnn.GRU(128),
                 nn.Dense(vocab_size, activation='linear')
             ])
@@ -70,8 +71,35 @@ def gen_text():
     mpath = model_path+"gru"
 
     model = Model.load(mpath)
+    outshape = (4, 7)
 
-    
+    def do_gen(txt):
+        #编码
+
+        res = vocab.encode(sentence=txt)
+
+        m, n = outshape
+
+        for i in range(m*n - 1):
+            in_batch = np.array(res).reshape((1, -1))
+            outs = model.predict(in_batch)
+            #取最后一维的预测结果
+            outs = outs[:, -1]
+            outs = dlmath.categories_sample(outs, 1)
+            res.append(outs[0,0] + 1)
+
+        txt = ""
+        for i in range(m):
+            txt = txt + vocab.decode(res[i*n:(i+1)*n]) + "\n"
+
+        return txt
+
+
+    starts = ['风', '花', '雪', '月']
+    for txt in starts:
+        model.reset()
+        res = do_gen(txt)
+        print(res)
 
 
 if '__main__' == __name__:

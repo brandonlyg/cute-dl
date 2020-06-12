@@ -57,7 +57,7 @@ def one_hot(x, dim):
     b = np.arange(dim).reshape((1, dim))
     c = a @ b
     res = (x == c).astype(int)
-    res = res.reshape(xshape)
+    res = res.reshape(xshape + (dim,))
 
     return res
 
