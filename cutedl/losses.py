@@ -108,7 +108,9 @@ class CategoricalCrossentropy(Loss):
     输入形状为(m, n)
     '''
     def __call__(self, y_true, y_pred):
-        m = y_true.shape[0]
+        #m = y_true.shape[0]
+        n = y_true.shape[-1]
+        m = y_true.reshape((-1, n)).shape[0]
         #pdb.set_trace()
         if not self.__form_logists:
             #计算误差
@@ -117,7 +119,6 @@ class CategoricalCrossentropy(Loss):
             self.__grad = -y_true/(m*y_pred)
             return loss.sum()
 
-        m = y_true.shape[0]
         #转换成概率分布
         y_prob = dlmath.prob_distribution(y_pred)
         #pdb.set_trace()
@@ -148,6 +149,6 @@ class SparseCategoricalCrossentropy(CategoricalCrossentropy):
     def __call__(self, y_true, y_pred):
         #y_true one-hone编码
         y_true = utils.one_hot(y_true, y_pred.shape[-1])
-
+        #pdb.set_trace()
         res = super().__call__(y_true, y_pred)
         return res

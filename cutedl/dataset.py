@@ -13,7 +13,7 @@ class Dataset(object):
     data 数据
     label 数据对应的标签
     '''
-    def __init__(self, data, label, batch_size):
+    def __init__(self, data, label, batch_size, drop_remainder=False):
         self.__data = data
         self.__label = label
         self.__batch_size = batch_size
@@ -26,7 +26,7 @@ class Dataset(object):
 
         #得到可划分的批数
         self.__batch_count = data.shape[0]//self.__batch_size
-        if data.shape[0] % self.__batch_size != 0:
+        if data.shape[0] % self.__batch_size != 0 and not drop_remainder:
             self.__batch_count += 1
 
     @property

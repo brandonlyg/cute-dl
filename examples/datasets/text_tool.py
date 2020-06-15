@@ -12,26 +12,30 @@ import pickle
 '''
 class Vocabulary(object):
 
-    def __init__(self):
+    def __init__(self, start_index=1):
         self.__idx2w = [] #索引到词的映射
         self.__w2idx = {} #词到索引的映射
 
         self.__add_buf = set()
+        self.__start_index = start_index
 
     '''
     添加词汇
     '''
-    def add(self, words=[], sentence=""):
-        self.__add_buf.update(words)
-        if len(sentence) > 0:
+    def add(self, words=None, sentence=None):
+        if type(words) == type([]):
+            self.__add_buf.update(words)
+
+        if type(sentence) == type(""):
             self.__add_buf.update(sentence)
 
     '''
     更新词汇表
     '''
-    def update(self, words=[], sentence=""):
-        self.__add_buf.update(words)
-        if len(sentence) > 0:
+    def update(self, words=None, sentence=None):
+        if type(words) == type([]):
+            self.__add_buf.update(words)
+        if type(sentence) == type(""):
             self.__add_buf.update(sentence)
 
         words = sorted(list(self.__add_buf))
@@ -43,20 +47,24 @@ class Vocabulary(object):
                 continue
 
             self.__idx2w.append(w)
-            self.__w2idx[w] = idx+1
+            self.__w2idx[w] = idx + self.__start_index
             idx += 1
 
     '''
     把词序列编码成整数序列
     '''
-    def encode(self, words=[], sentence="", drop_missing=False):
-        src = words
-        for i in range(len(sentence)):
-            w = sentence[i]
-            src.append(w)
+    def encode(self, words=None, sentence=None, drop_missing=False):
+        src = []
+        if type(sentence) == type(""):
+            for i in range(len(sentence)):
+                w = sentence[i]
+                src.append(w)
+
+        if type(words) == type([]):
+            src += words
 
         res = []
-        missing = len(self.__idx2w) + 1
+        missing = len(self.__idx2w) + self.__start_index
         for w in src:
             ec = missing
             if w in self.__w2idx:
@@ -74,12 +82,12 @@ class Vocabulary(object):
     '''
     def decode(self, intseq):
         res = []
-        missing = len(self.__idx2w) + 1
+        missing = len(self.__idx2w) + self.__start_index
         for ec in intseq:
-            if ec >= missing or ec <= 0:
+            if ec >= missing or ec < self.__start_index:
                 res.append(' ')
             else:
-                res.append(self.__idx2w[ec-1])
+                res.append(self.__idx2w[ec-self.__start_index])
 
         return res
 

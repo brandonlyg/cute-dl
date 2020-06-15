@@ -37,7 +37,7 @@ def fit(name, model):
                 optimizer = optimizers.Adam()
             )
 
-    stop_fit = session.condition_callback(lambda :sess.stop_fit(), 'loss', 10)
+    stop_fit = session.condition_callback(lambda :sess.stop_fit(), 'loss', 100)
 
     def save_and_report(history):
         #pdb.set_trace()
@@ -45,7 +45,7 @@ def fit(name, model):
         model.save(model_path+name)
 
     #pdb.set_trace()
-    history = sess.fit(ds_train, 100,
+    history = sess.fit(ds_train, 1000,
                         listeners=[
                             stop_fit,
                             session.FitListener('epoch_end', callback=save_and_report)
@@ -57,9 +57,12 @@ def fit(name, model):
 
 def fit_gru():
     vocab_size = vocab.size()
+    print("vocab size: ", vocab_size)
     model = Model([
-                rnn.Embedding(128, vocab_size+1),
-                rnn.GRU(128),
+                rnn.Embedding(256, vocab_size),
+                rnn.GRU(1024, stateful=True),
+                nn.Dense(1024),
+                nn.Dropout(0.5),
                 nn.Dense(vocab_size, activation='linear')
             ])
 
@@ -71,31 +74,35 @@ def gen_text():
     mpath = model_path+"gru"
 
     model = Model.load(mpath)
+    print("loadding model finished")
     outshape = (4, 7)
+
+    print("vocab size: ", vocab.size())
 
     def do_gen(txt):
         #编码
-
+        #pdb.set_trace()
         res = vocab.encode(sentence=txt)
 
         m, n = outshape
 
         for i in range(m*n - 1):
             in_batch = np.array(res).reshape((1, -1))
-            outs = model.predict(in_batch)
+            preds = model.predict(in_batch)
             #取最后一维的预测结果
-            outs = outs[:, -1]
-            outs = dlmath.categories_sample(outs, 1)
-            res.append(outs[0,0] + 1)
+            preds = preds[:, -1]
+            outs = dlmath.categories_sample(preds, 1)
+            res.append(outs[0,0])
 
+        #pdb.set_trace()
         txt = ""
         for i in range(m):
-            txt = txt + vocab.decode(res[i*n:(i+1)*n]) + "\n"
+            txt = txt + ''.join(vocab.decode(res[i*n:(i+1)*n])) + "\n"
 
         return txt
 
 
-    starts = ['风', '花', '雪', '月']
+    starts = ['云', '故', '画', '花']
     for txt in starts:
         model.reset()
         res = do_gen(txt)
@@ -103,4 +110,5 @@ def gen_text():
 
 
 if '__main__' == __name__:
-    fit_gru()
+    #fit_gru()
+    gen_text()

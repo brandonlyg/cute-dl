@@ -71,14 +71,14 @@ class ChinaPoetry:
         labels = np.array(labels)
 
         print("load dataset successful")
-        ds = Dataset(datas, labels, batch_size)
+        ds = Dataset(datas, labels, batch_size, drop_remainder=True)
         return ds
 
     '''
     构建词汇表
     '''
     def __build_vocabulary(self, raw_data, fpath):
-        vocab = Vocabulary()
+        vocab = Vocabulary(start_index=0)
         for r in raw_data:
             vocab.update(sentence=r)
 
@@ -110,9 +110,9 @@ class ChinaPoetry:
                 #去掉标题
                 start = item.find('\n')
                 item = item[start+1:]
-                #去掉注释
+                #去掉注释和空格
                 item = re.sub(r'[\(（][^\)）]+[\)）]', '', item)
-                item = re.sub(r'[》《“”:]', '', item)
+                item = re.sub(r'[》《“”:： ]', '', item)
                 #把分割符替换成空格
                 item = re.sub(r'[,，\.。；？！]', ' ', item)
                 item = item.lstrip().rstrip()
@@ -123,7 +123,7 @@ class ChinaPoetry:
 
             return sentences
 
-        fnames = glob.glob(self.__dir+"/*.txt")
+        fnames = sorted(glob.glob(self.__dir+"/*.txt"))
         for fn in fnames:
             sentences = read_file(fn)
             res += sentences

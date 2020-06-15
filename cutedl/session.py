@@ -178,13 +178,17 @@ class Session(object):
 
         #显示训练进度
         def display_progress(epoch, epochs, step, steps, loss, val_loss=-1):
-            prog = (step % steps)/steps
+            step = step % steps
+            if step == 0:
+                step = steps
+
+            prog = step/steps
             w = 20
 
             str_epochs = ("%0"+str(len(str(epochs)))+"d/%d")%(epoch, epochs)
 
             txt = (">"*(int(prog * w))) + (" "*w)
-            txt = txt[:w] + " %d/%d"%((step%steps), steps)
+            txt = txt[:w] + " %d/%d"%(step, steps)
             if val_loss < 0:
                 txt = txt + (" loss=%f   "%loss)
                 print("%s %s"%(str_epochs, txt), end='\r')
